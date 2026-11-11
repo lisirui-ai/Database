@@ -227,6 +227,9 @@ $sudo apt install mysql-server
 **第 3 步：安装客户端（按需）**
 
 ```bash
+# 刷新软件包索引：索引过期会导致安装时报 404 Not Found，安装前先执行
+$sudo apt update
+
 # 安装命令行客户端：如果 mysql -u root -p 提示找不到命令，就需要安装它
 $sudo apt install mysql-client
 ```
