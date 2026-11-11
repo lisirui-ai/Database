@@ -232,9 +232,10 @@ $sudo apt update
 
 # 安装命令行客户端：如果 mysql -u root -p 提示找不到命令，就需要安装它
 $sudo apt install mysql-client
-```
 
-> 教学使用的 Ubuntu 镜像中**已经安装好了 MySQL 服务器端和客户端**，并设置成了**开机自启动**，无需再安装。
+# 验证安装：-V（等同于 --version）输出客户端版本号，能输出说明客户端安装成功
+$mysql -V
+```
 
 ### 2.3 服务管理
 
@@ -320,6 +321,7 @@ $sudo mysql
 ```sql
 -- 8.0 使用 alter user 修改密码；with mysql_native_password 指定认证插件
 -- 'root'@'localhost' 表示“从本机登录的 root 用户”
+-- by 后面的 '123' 是要设置的新密码，请替换成自己的密码
 alter user 'root'@'localhost' identified with mysql_native_password by '123';
 -- 刷新权限
 flush privileges;
@@ -329,8 +331,6 @@ flush privileges;
 # 重启 MySQL 服务
 $sudo service mysql restart
 ```
-
-> 补充资料：[修改密码方法](https://www.jb51.net/article/150020.htm)、[卸载方法](https://ywnz.com/linuxysjk/3141.html)、[安装方法](https://www.cnblogs.com/luoli-/p/9249769.html)、[5.7 安装时没配密码怎么办](https://blog.csdn.net/qq_38737992/article/details/81090373)。
 
 ---
 
