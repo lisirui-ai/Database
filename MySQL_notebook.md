@@ -203,14 +203,14 @@ if __name__ == '__main__':
 # dpkg -i：安装本地 .deb 软件包
 # 安装过程中弹出选择界面：第一项（MySQL Server）进去改成 8.0，再选 OK
 $sudo dpkg -i mysql-apt-config_0.8.12-1_all.deb
-
-# 一定要先更新软件源索引，再安装；如果 update 报错，需要先解决 Ubuntu 的源问题
-$sudo apt update
 ```
 
 **第 2 步：安装服务器端**
 
 ```bash
+# 一定要先更新软件源索引，再安装；如果 update 报错，需要先解决 Ubuntu 的源问题
+$sudo apt update
+
 # 安装 MySQL 服务器端，安装过程中按提示设置 root 密码（务必设置，且两次输入一致）
 $sudo apt install mysql-server
 ```
