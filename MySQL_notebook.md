@@ -413,7 +413,7 @@ $sudo service mysql restart
 | 连接项 | 填写内容 |
 | --- | --- |
 | `Connection name` | 连接名称，自定义，例如 `ubuntu-mysql` |
-| `Host` | 服务器 IP，例如 `192.168.172.128`（在 Ubuntu 中用 `ip addr` 查看） |
+| `Host` | 服务器 IP，例如 `192.168.172.128`（在 Ubuntu 中用 `ifconfig` 查看） |
 | `Port` | `3306`（MySQL 默认端口） |
 | `Username` | 登录账号，例如 `root` |
 | `Password` | 该账号的密码 |
