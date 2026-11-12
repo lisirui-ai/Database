@@ -220,7 +220,7 @@ $sudo apt install mysql-server
 > 1. `Use Strong Password Encryption (RECOMMENDED)`：使用强密码加密（`caching_sha2_password`，8.0 默认）
 > 2. `Use Legacy Authentication Method (Retain MySQL 5.x Compatibility)`：使用旧版认证方式（`mysql_native_password`，兼容 5.x）
 >
-> 教学环境中为了兼容旧版客户端（如旧版 Navicat、旧版驱动），**选择 2**。
+> 为了兼容旧版客户端（如旧版 Navicat、旧版驱动），**选择 2**。
 >
 > 如果安装时没有设置密码，可参考 [2.5 密码问题](#25-密码问题与重置) 进行修改。
 
