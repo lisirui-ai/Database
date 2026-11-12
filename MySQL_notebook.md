@@ -1,7 +1,7 @@
 # MySQL 笔记
 
 MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统（RDBMS）**，最初由瑞典 MySQL AB 公司开发，后被 Sun 公司收购，Sun 又被 Oracle 收购，现属于 Oracle 旗下产品。
-本笔记以 **MySQL 8.0** 为主（同时标注 5.7 的差异），涵盖数据库基础概念、安装配置与客户端连接、数据类型与约束、数据库与表的操作（DDL）、数据增删改（DML）、数据库设计（三范式与 E-R 模型）、查询（条件、排序、聚合、分组、窗口函数、分页、连接、自关联、子查询）、视图、事务、索引、账户与权限管理、主从同步等核心内容，适合系统性学习与日常查阅。
+本笔记以 **MySQL 8.0** 为主，涵盖数据库基础概念、安装配置与客户端连接、数据类型与约束、数据库与表的操作（DDL）、数据增删改（DML）、数据库设计（三范式与 E-R 模型）、查询（条件、排序、聚合、分组、窗口函数、分页、连接、自关联、子查询）、视图、事务、索引、账户与权限管理、主从同步等核心内容，适合系统性学习与日常查阅。
 
 > **核心理念**：数据库是一种**特殊的文件**，其中按照“**库 → 表 → 行（记录）/ 列（字段）**”的层次存储数据；**SQL** 是操作所有关系型数据库的通用语言。
 > 对 Web 程序员来说，重点是熟练编写数据的 **CRUD（增删改查）**：`DQL`（查询）和 `DML`（增删改）必须熟练，`DDL`（建库建表）要会写，`TPL`（事务）、`DCL`（权限）、`CCL`（游标）了解即可。
@@ -284,34 +284,7 @@ $sudo service mysql restart
 
 > 以下内容针对**出现异常时**才需要查看（安装时没设置密码、忘记密码等）。
 
-**MySQL 5.7 安装时没配置密码的修改步骤：**
-
-```bash
-# 5.7 中用 root（系统管理员）身份可以不输密码直接进入数据库
-$sudo mysql
-```
-
-```sql
--- 切换到系统库 mysql（用户信息都存放在其中的 user 表）
-use mysql;
--- 修改 root 在 localhost 登录的密码；password() 是 5.7 的加密函数（8.0 已删除）
-update mysql.user set authentication_string=password('123') where user='root' and host='localhost';
--- 把认证插件改为 mysql_native_password，方便各种客户端连接
-update user set plugin="mysql_native_password";
--- 刷新权限表，使修改立即生效（直接修改系统表后必须执行）
-flush privileges;
--- 退出客户端
-quit;
-```
-
-```bash
-# 重启 MySQL 服务
-$sudo service mysql restart
-# 使用新密码登录
-$mysql -u root -p
-```
-
-**MySQL 8.0（如 Ubuntu 20.04）没有配置密码的修改方式：**
+**安装时没有配置密码的修改方式：**
 
 ```bash
 # 以系统管理员身份直接进入数据库
@@ -376,8 +349,6 @@ select now();
 
 > 以下方法用于让**其他机器**能连接到本服务器的 MySQL，**仅用于学习环境，生产环境中不要随意开放 root 远程登录**。
 
-**MySQL 8.0：**
-
 ```bash
 # 以 root 登录
 $mysql -u root -p
@@ -397,16 +368,6 @@ flush privileges;
 ```bash
 # 退出 MySQL 后，在系统终端重启服务，使远程访问配置生效
 $sudo service mysql restart
-```
-
-**MySQL 5.7：**
-
-```sql
--- 授予 root 在任意主机上的全部权限；identified by 后是密码；with grant option 表示可以把权限再授予别人
--- 注意：8.0 中 grant 语句不能再带 identified by，必须先 create user（见 23.3）
-grant all privileges on *.* to 'root'@'%' identified by 'password' with grant option;
--- 刷新权限
-flush privileges;
 ```
 
 **如果还是连不上**，需要修改服务器的绑定地址：
@@ -538,7 +499,7 @@ $sudo ss -lntp | grep 3306
 >
 > - `char`：长度固定，处理速度快，适合长度固定的数据（如手机号、身份证号、性别、MD5）
 > - `varchar`：长度可变，节省空间，适合长度不固定的数据（如姓名、标题）
-> - **超长怎么办**：`char(3)` / `varchar(3)` 存入 `'abcd'`，PDF 讲义写“实际存储为 `'abc'`”（截断）。这是**非严格模式**下的行为；MySQL 5.7 及 8.0 默认是**严格模式**，会直接报错 `Data too long for column`，数据不会被写入
+> - **超长怎么办**：`char(3)` / `varchar(3)` 存入 `'abcd'`，PDF 讲义写“实际存储为 `'abc'`”（截断）。这是**非严格模式**下的行为；MySQL 8.0 默认是**严格模式**，会直接报错 `Data too long for column`，数据不会被写入
 > - 字符串 `text` 用于存储大文本，当字符数大于 4000 字节时推荐使用
 > - **图片、音频、视频等文件不存储在数据库中**，而是上传到某个服务器（或对象存储）上，然后在表中存储这个文件的**保存路径**
 
@@ -1279,7 +1240,7 @@ select gender from students group by gender;
 
 > 当 `group by` **单独使用**时，只显示出每组的第一条记录（去重效果），实际意义不大。**分组通常要配合聚合函数、`group_concat()`、`having`、`with rollup` 使用**。
 >
-> **重要规则**：`select` 后面出现的列，要么出现在 `group by` 中，要么放在聚合函数里；否则在默认的 `ONLY_FULL_GROUP_BY` 模式下（5.7 及 8.0 默认开启）会报错。
+> **重要规则**：`select` 后面出现的列，要么出现在 `group by` 中，要么放在聚合函数里；否则在默认的 `ONLY_FULL_GROUP_BY` 模式下（8.0 默认开启）会报错。
 
 ### 13.2 `group by` + `group_concat()`
 
@@ -1910,7 +1871,7 @@ set autocommit = 0;
 > - **幻读**：同一个事务里，两次按同样条件查询，因为别的事务**插入或删除并提交**了，行数不一样
 
 ```sql
--- 查看当前会话的隔离级别（8.0 用 transaction_isolation；5.7 用 tx_isolation）
+-- 查看当前会话的隔离级别
 select @@transaction_isolation;
 -- 设置当前会话的隔离级别为“读已提交”
 set session transaction isolation level read committed;
@@ -2123,11 +2084,13 @@ mysql> select host,user,authentication_string from user;
 >
 > **常用权限**：`create`、`alter`、`drop`、`insert`、`update`、`delete`、`select`；如果要分配**所有权限**，可以使用 `all privileges`。
 
-**授权语法（5.7 及以前，可一步完成建账户和授权）：**
+**授权语法（8.0 必须分两步：先创建账户，再授权）：**
 
 ```sql
--- grant 权限列表 on 数据库.表 to '用户名'@'访问主机' identified by '密码';
-grant 权限列表 on 数据库 to '用户名'@'访问主机' identified by '密码';
+-- 创建账户：create user '用户名'@'访问主机' identified by '密码';
+create user '用户名'@'访问主机' identified by '密码';
+-- 授权：grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
+grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 ```
 
 > **访问主机**的取值：
@@ -2165,15 +2128,12 @@ $mysql -ulaowang -p
 **示例 2**：创建一个 `laoli` 的账号，密码为 `12345678`，**可以在任意电脑上连接访问**，并且对 `jing_dong` 数据库中的所有表拥有**所有权限**。
 
 ```sql
--- 5.7 版本：一条语句同时创建账户并授权
-grant all privileges on jing_dong.* to 'laoli'@'%' identified by '12345678';
-
--- 8.0 版本：必须分两步
+-- 先创建账户，再授权
 create user 'laoli'@'%' identified by '12345678';
 grant all privileges on jing_dong.* to 'laoli'@'%';
 ```
 
-> **MySQL 8.0 与 5.7 的差异**：8.0 中 `grant ... identified by '密码'` 的写法已经**被移除**（会报语法错误），必须先 `create user` 创建账户，再 `grant` 授权。
+> **注意**：8.0 中 `grant ... identified by '密码'` 的写法已被移除（会报语法错误），必须先 `create user` 创建账户，再 `grant` 授权。
 
 ### 23.4 修改权限、回收权限
 
@@ -2190,7 +2150,7 @@ revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 
 ### 23.5 修改密码
 
-> 使用 `root` 登录后修改。以前（5.7）的做法是修改 `mysql.user` 表并使用 `password()` 函数加密；**推荐使用 `alter user` 语句**（5.7.6+ 和 8.0 均支持）。
+> 使用 `root` 登录后修改。使用 `alter user` 语句修改（8.0 已删除 `password()` 函数，不能再直接修改 `mysql.user` 表来改密码）。
 
 ```sql
 -- 修改用户的密码：alter user '用户名'@'主机' identified by '新密码';
