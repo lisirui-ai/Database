@@ -350,8 +350,9 @@ $mysql -u root -p
 # 带密码直接登录：-p 与密码之间不能有空格（密码会留在命令历史中，不安全，仅学习使用）
 $mysql -uroot -p123
 
-# 完整格式：-h 服务器地址，-P（大写）端口，最后可以直接指定要使用的数据库
-$mysql -h 127.0.0.1 -P 3306 -u root -p python
+# 完整格式：-h 服务器地址，-P（大写）端口
+# 最后的 test_db 是数据库名（需已存在），登录后自动进入该库，相当于省去 use test_db;
+$mysql -h 127.0.0.1 -P 3306 -u root -p test_db
 ```
 
 > 连接成功后出现 `mysql>` 提示符，表示已进入客户端，可以输入 SQL。
@@ -423,6 +424,11 @@ select host,user from user;
 update user set host='%' where user='root';
 -- 刷新权限
 flush privileges;
+```
+
+```bash
+# 退出 MySQL 后，在系统终端重启服务，使远程访问配置生效
+$sudo service mysql restart
 ```
 
 **MySQL 5.7：**
@@ -575,19 +581,19 @@ gender enum('男','女','中性','保密')
 -- 查看当前服务器上的所有数据库
 show databases;
 -- 使用（切换到）某个数据库，之后的操作都针对它：use 数据库名;
-use python;
+use test_db;
 -- 查看当前正在使用的数据库，如果没有选择则返回 NULL
 select database();
 -- 创建数据库：create database 数据库名 charset=字符集;
 -- charset=utf8 指定字符集；utf8 在 MySQL 中最多支持 3 字节字符，如果要存 emoji 表情，应使用 utf8mb4
-create database python charset=utf8;
+create database test_db charset=utf8;
 -- 查看数据库的创建语句（可看到字符集等信息）
-show create database python;
+show create database test_db;
 -- 删除数据库（会连同库里所有表和数据一起删除，且无法恢复，慎用）
-drop database python;
+drop database test_db;
 ```
 
-> **推荐写法**：`create database if not exists python charset=utf8mb4;`，加上 `if not exists` 可避免库已存在时报错；删除时同理 `drop database if exists python;`。
+> **推荐写法**：`create database if not exists test_db charset=utf8mb4;`，加上 `if not exists` 可避免库已存在时报错；删除时同理 `drop database if exists test_db;`。
 
 ### 5.2 数据表操作
 
@@ -782,8 +788,8 @@ select * from students where isdelete=0;
 
 ```bash
 # mysqldump：导出数据库为 SQL 脚本文件
-# -u 用户名；-p 回车后按提示输入密码；python 是要备份的数据库名；> 表示把输出重定向到文件
-$mysqldump -uroot -p python > python.sql
+# -u 用户名；-p 回车后按提示输入密码；test_db 是要备份的数据库名；> 表示把输出重定向到文件
+$mysqldump -uroot -p test_db > test_db.sql
 ```
 
 **恢复**
@@ -795,15 +801,15 @@ $mysql -uroot -p
 
 ```sql
 -- 创建用于恢复的新数据库
-create database python_new charset=utf8;
+create database test_db_new charset=utf8;
 -- 退出客户端
 quit
 ```
 
 ```bash
 # 第 2 步：用 < 把 SQL 文件作为输入交给 mysql 执行，从而重建表和数据
-# python_new 是刚创建的目标数据库名；根据提示输入密码
-$mysql -uroot -p python_new < python.sql
+# test_db_new 是刚创建的目标数据库名；根据提示输入密码
+$mysql -uroot -p test_db_new < test_db.sql
 ```
 
 ---
