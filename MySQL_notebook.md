@@ -461,7 +461,9 @@ $sudo ss -lntp | grep 3306
 ```bash
 # 备份配置文件，便于出错时恢复
 $sudo cp /etc/mysql/mysql.conf.d/mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf.bak
-# 将 bind-address 改为 0.0.0.0（先用 grep -n 确认其所在行号，此处为第 31 行）
+# 查看 bind-address 所在行号（grep -n 显示行号），本例为第 31 行
+$sudo grep -n "bind-address" /etc/mysql/mysql.conf.d/mysqld.cnf
+# 将第 31 行的 127.0.0.1 替换为 0.0.0.0（行号以上一条命令的结果为准）
 $sudo sed -i '31s/127\.0\.0\.1/0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
 # 重启服务使配置生效
 $sudo systemctl restart mysql
@@ -474,8 +476,6 @@ $sudo ufw allow 3306/tcp
 ```bash
 # 服务器端：监听地址应为 0.0.0.0:3306 或 *:3306
 $sudo ss -lntp | grep 3306
-# Windows PowerShell：TcpTestSucceeded 为 True 表示端口可达
-$Test-NetConnection 192.168.172.128 -Port 3306
 ```
 
 > **报错速查**：`ECONNREFUSED` 为端口层问题（服务未启动、监听地址、防火墙）；`Access denied` 或 `not allowed to connect` 为认证层问题（用户名、密码、账号的 `host`）。排查时先解决端口层，再处理认证层。
