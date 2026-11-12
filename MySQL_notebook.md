@@ -17,7 +17,7 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 | --- | ----------------------------------------------------- |
 | 一   | 数据库基础概念：数据存储的演进、数据库的核心元素、RDBMS、SQL 分类、Python 中的 SQL |
 | 二   | MySQL 简介与安装配置：特点、Ubuntu 安装、服务管理、配置文件、密码问题 |
-| 三   | 客户端连接：命令行客户端、允许远程连接 |
+| 三   | 客户端连接：命令行客户端、允许远程连接、远程连接排错实战（ECONNREFUSED） |
 | 四   | 数据完整性：数据类型（数值、字符串、日期时间、枚举）与约束（主键、非空、唯一、默认、外键） |
 | 五   | 数据库与数据表操作（DDL）：库的创建/删除、表的创建/修改/删除、查看表结构 |
 | 六   | 数据增删改（DML）：insert、update、delete、逻辑删除、备份与恢复 |
@@ -426,6 +426,59 @@ bind-address = 0.0.0.0
 # 修改配置后必须重启服务
 $sudo service mysql restart
 ```
+
+### 3.3 远程连接报错 `ECONNREFUSED` 的原因与解决
+
+> **现象**：Windows 客户端连接 Ubuntu 虚拟机中的 MySQL 8.0，报错 `connect ECONNREFUSED 192.168.172.128:3306`。
+>
+> **原因**：`ECONNREFUSED` 发生在 TCP 连接阶段（早于账号认证），表示目标端口没有接受连接。最常见的原因是 `bind-address` 为默认值 `127.0.0.1`，MySQL 只监听本机回环地址，拒绝其他机器的连接。
+>
+> **结论**：将 `bind-address` 改为 `0.0.0.0` 并重启服务，必要时放行防火墙 3306 端口。账号的远程登录权限见 [3.2](#32-开启远程连接)。
+
+**确认监听地址**
+
+```bash
+# ss：查看套接字；-l 仅监听状态，-n 数字端口，-t 仅 TCP，-p 显示进程；grep 过滤 3306
+$sudo ss -lntp | grep 3306
+```
+
+> 判断依据：
+>
+> ---
+
+| 输出 | 含义 |
+| --- | --- |
+| 无输出 | MySQL 未启动 |
+| `127.0.0.1:3306` | 仅监听本机，需修改 `bind-address` |
+| `0.0.0.0:3306` 或 `*:3306` | 监听所有网卡，正常 |
+
+> ---
+>
+> `33060` 是 X 协议端口，与普通远程连接无关，无需修改。
+
+**修改配置**
+
+```bash
+# 备份配置文件，便于出错时恢复
+$sudo cp /etc/mysql/mysql.conf.d/mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf.bak
+# 将 bind-address 改为 0.0.0.0（先用 grep -n 确认其所在行号，此处为第 31 行）
+$sudo sed -i '31s/127\.0\.0\.1/0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+# 重启服务使配置生效
+$sudo systemctl restart mysql
+# 放行防火墙 3306 端口（ufw 状态为 inactive 时可跳过）
+$sudo ufw allow 3306/tcp
+```
+
+**验证**
+
+```bash
+# 服务器端：监听地址应为 0.0.0.0:3306 或 *:3306
+$sudo ss -lntp | grep 3306
+# Windows PowerShell：TcpTestSucceeded 为 True 表示端口可达
+$Test-NetConnection 192.168.172.128 -Port 3306
+```
+
+> **报错速查**：`ECONNREFUSED` 为端口层问题（服务未启动、监听地址、防火墙）；`Access denied` 或 `not allowed to connect` 为认证层问题（用户名、密码、账号的 `host`）。排查时先解决端口层，再处理认证层。
 
 ---
 
