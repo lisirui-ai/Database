@@ -110,7 +110,7 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 > **RDBMS 与数据库的关系**：RDBMS（如 MySQL 软件）是管理数据库的**软件**，一个 RDBMS 中可以创建**多个数据库**，每个数据库中可以有**多张表**。
 > 即：`MySQL 服务器（RDBMS）` ⊃ `数据库` ⊃ `数据表` ⊃ `数据行 / 数据列`。
 
-> **RDBMS 架构图**：客户端（`RDBMS-client`）通过 SQL 与服务器端（`RDBMS-server`）交互，服务器端管理多个数据库，每个数据库中包含多张数据表。
+> **RDBMS 架构图**：客户端（`RDBMS-client`）可以是任何语言（如 Python、Java、C 等）编写的程序，也可以是命令行或图形化工具，它们都通过 SQL 与服务器端（`RDBMS-server`）交互，服务器端管理多个数据库，每个数据库中包含多张数据表。
 >
 > <img src="images/rdbms_architecture.jpg" alt="RDBMS 架构图" width="600">
 
