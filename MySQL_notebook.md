@@ -688,7 +688,7 @@ create table students(
 | 操作 | 语法 | 说明 |
 | --- | --- | --- |
 | 添加字段 | `alter table 表名 add 列名 类型;` | 在表的**最后**添加一个字段 |
-| 修改字段（可重命名） | `alter table 表名 change 原名 新名 类型及约束;` | 改名并重新定义类型约束，**即使不改名也要写两遍** |
+| 修改字段（可重命名） | `alter table 表名 change 原名 新名 类型及约束;` | 可同时改列名和类型约束。语法里有“原名”“新名”两个位置，**必须都填**；只想改类型、不想改名时，新名照样写成原来的列名（如 `change name name varchar(30)`）。会整体替换列定义，类型及 `not null`、`default`、`auto_increment` 等属性要写完整，否则这些属性会丢失（`primary key`、`unique` 等索引不受影响） |
 | 修改字段（不重命名） | `alter table 表名 modify 列名 类型及约束;` | 只改类型和约束 |
 | 删除字段 | `alter table 表名 drop 列名;` | 删除该字段及其所有数据 |
 
