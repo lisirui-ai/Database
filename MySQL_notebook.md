@@ -325,7 +325,7 @@ $sudo mysql
 -- identified with mysql_native_password：指定认证插件为旧版 mysql_native_password
 -- by '123'：设置新密码为 123（字符串），请替换成自己的密码
 alter user 'root'@'localhost' identified with mysql_native_password by '123';
--- flush privileges：重新加载权限表，使上面的修改立即生效
+-- flush privileges：重新加载权限表；alter user 本身即时生效，这里的刷新只是保险写法，可省略
 flush privileges;
 ```
 
@@ -2415,7 +2415,7 @@ revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 -- alter user '用户名'@'主机' identified by '新密码'：修改指定账户的密码
 -- 这里把 laowang@localhost 的密码改为 luke123
 alter user 'laowang'@'localhost' identified by 'luke123';
--- flush privileges：重新加载权限表，使修改立即生效
+-- flush privileges：重新加载权限表；alter user 本身即时生效，这里的刷新只是保险写法，可省略
 flush privileges;
 ```
 
@@ -2470,7 +2470,8 @@ flush privileges;
 
 ```sql
 -- 语法 1（推荐）：使用 root 登录，drop user '用户名'@'主机';
--- 主机要与创建时一致，这里删除的是 laowang@'%' 这个账户
+-- 主机部分必须与账户创建时一致，否则会报错账户不存在；这里删除的是 laowang@'%' 这个账户
+-- （注意：前文示例创建的是 laowang@'localhost'，实际删除它应写 'laowang'@'localhost'）
 drop user 'laowang'@'%';
 -- 语法 2：直接删除 mysql 数据库的 user 表中的数据（语法 1 失败时才采用）
 -- delete from 表 where 条件：删除 user 列为 laowang 的行
