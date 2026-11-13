@@ -629,9 +629,11 @@ drop database test_db;
 ```sql
 -- 查看当前数据库中的所有表
 show tables;
--- 查看表结构：显示每个字段的名称、类型、是否为空、键、默认值、额外信息；desc 是 describe 的简写
+-- 查看表结构，完整格式：desc 表名;（desc 是 describe 的简写，也可写作 describe 表名;）
+-- 显示每个字段的名称、类型、是否为空、键、默认值、额外信息；这里的 classes 是示例表名，使用时替换为实际表名
 desc classes;
--- 查看表的创建语句（可看到完整的建表 SQL、引擎、字符集等）
+-- 查看表的创建语句，完整格式：show create table 表名;
+-- 可看到完整的建表 SQL、引擎、字符集等；这里的 classes 同样是示例表名
 show create table classes;
 ```
 
