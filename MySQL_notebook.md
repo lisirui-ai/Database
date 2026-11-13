@@ -144,33 +144,44 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 > 在 Python 代码中操作数据，本质就是**把 SQL 语句以字符串形式交给数据库执行**。下面用第三方库 `pymysql` 演示（先 `pip install pymysql`）。
 
 ```python
-from pymysql import connect  # 导入 connect 函数，用于创建数据库连接
+# 从第三方库 pymysql 中导入 connect 函数；connect 用于创建数据库连接
+from pymysql import connect
 
 
+# 定义主函数 main，把整个演示流程封装起来，无参数、无返回值（None）
 def main():
     """连接 MySQL，查询 id 为 7 的学生，并打印查询结果。"""
-    # 创建 Connection 连接对象
-    # host：服务器地址（str）；port：端口（int，MySQL 默认 3306）
-    # user / password：登录账号与密码（str）；database：要使用的库名（str）
+    # 创建 Connection（连接）对象，返回值类型为 pymysql.connections.Connection
+    # host：服务器地址（str），localhost 表示本机
+    # port：端口号（int），MySQL 默认 3306
+    # user：登录用户名（str）；password：登录密码（str）
+    # database：连接后默认使用的库名（str），相当于执行了 use python1;
     # charset：连接使用的字符集（str），要与库的字符集一致，否则会乱码
     conn = connect(host='localhost', port=3306, user='root',
                    password='mysql', database='python1', charset='utf8')
-    # 获取 Cursor（游标）对象，所有 SQL 都通过它来执行
+    # 通过连接对象获取 Cursor（游标）对象，所有 SQL 都要通过游标来执行
     cs = conn.cursor()
-    # SQL 语句：%s 是占位符，由 execute 的第二个参数填充
+    # 定义 SQL 语句字符串（str），其中 %s 是占位符，由 execute 的第二个参数填充
     # 不要用字符串拼接的方式拼 SQL，否则会产生 SQL 注入风险
     sql = 'select id,name from students where id = %s'
-    # execute(sql, 参数元组)：返回 int，表示受影响（或查询到）的行数
+    # execute(sql, 参数元组)：执行 SQL；第二个参数是 tuple，单个元素要写成 (7,)
+    # 返回值 count 为 int，表示受影响（或查询到）的行数
     count = cs.execute(sql, (7,))
-    print(count)  # 打印受影响的行数，int
-    # fetchall()：取出全部结果，返回 tuple，每个元素也是 tuple（一行数据）
+    # 打印受影响（查询到）的行数（int），例如查到 1 行则输出 1
+    print(count)
+    # fetchall()：一次取出全部查询结果
+    # 返回 tuple：外层元组的每个元素是一行数据（也是 tuple），如 ((7, '王祖贤'),)
     print(cs.fetchall())
-    # 如果执行的是 insert / update / delete，必须调用 conn.commit() 才会生效
-    cs.close()  # 关闭游标
-    conn.close()  # 关闭连接
+    # 注意：如果执行的是 insert / update / delete，必须调用 conn.commit() 才会生效
+    # 关闭游标，释放资源
+    cs.close()
+    # 关闭连接，释放服务器端的连接资源
+    conn.close()
 
 
+# 判断当前文件是否是被直接运行的（而不是被 import），是则执行下面的代码
 if __name__ == '__main__':
+    # 调用主函数，开始执行
     main()
 ```
 
@@ -208,7 +219,9 @@ if __name__ == '__main__':
 
 ```bash
 # 把官方提供的 mysql-apt-config_0.8.12-1_all.deb 放到 Ubuntu 下面，然后安装它
-# dpkg -i：安装本地 .deb 软件包
+# sudo：以管理员权限执行后面的命令（安装软件需要）
+# dpkg：Debian/Ubuntu 的底层软件包管理工具；-i（--install）：安装本地 .deb 软件包
+# mysql-apt-config_0.8.12-1_all.deb：参数，要安装的软件包文件名（需在当前目录下）
 # 安装过程中弹出选择界面：第一项（MySQL Server）进去改成 8.0，再选 OK
 $sudo dpkg -i mysql-apt-config_0.8.12-1_all.deb
 ```
@@ -216,10 +229,12 @@ $sudo dpkg -i mysql-apt-config_0.8.12-1_all.deb
 **第 2 步：安装服务器端**
 
 ```bash
+# apt：Ubuntu 的软件包管理工具；update 子命令：从软件源刷新“可安装软件列表”（索引）
 # 一定要先更新软件源索引，再安装；如果 update 报错，需要先解决 Ubuntu 的源问题
 $sudo apt update
 
-# 安装 MySQL 服务器端，安装过程中按提示设置 root 密码（务必设置，且两次输入一致）
+# install 子命令：下载并安装指定软件包；mysql-server 是 MySQL 服务器端的包名
+# 安装过程中按提示设置 root 密码（务必设置，且两次输入一致）
 $sudo apt install mysql-server
 ```
 
@@ -238,9 +253,11 @@ $sudo apt install mysql-server
 # 刷新软件包索引：索引过期会导致安装时报 404 Not Found，安装前先执行
 $sudo apt update
 
-# 安装命令行客户端：如果 mysql -u root -p 提示找不到命令，就需要安装它
+# 安装命令行客户端：mysql-client 是客户端的包名
+# 如果 mysql -u root -p 提示找不到命令，就需要安装它
 $sudo apt install mysql-client
 
+# mysql 是命令行客户端程序
 # 验证安装：-V（等同于 --version）输出客户端版本号，能输出说明客户端安装成功
 $mysql -V
 ```
@@ -250,20 +267,23 @@ $mysql -V
 > 服务器端一般以**服务**方式管理，服务名称为 `mysql`。
 
 ```bash
+# service：管理系统服务的命令，格式：service 服务名 动作；mysql 是服务名；start 动作：启动
 # 启动 MySQL 服务（如果登录时报“无法连接到 socket”之类的错误，说明服务没启动）
 $sudo service mysql start
 
-# 查看服务状态（active (running) 表示正在运行）
+# status 动作：查看服务状态（active (running) 表示正在运行）
 $sudo service mysql status
 
 # 查看进程中是否存在 mysql 服务
-# ps -elf：列出所有进程的详细信息；grep mysql：过滤出包含 mysql 的行
+# ps：查看进程；-e 列出所有进程，-l 长格式，-f 完整格式，合写为 -elf
+# |（管道）：把前一条命令的输出交给后一条命令处理
+# grep mysql：过滤出包含 mysql 的行（找到 mysqld 进程说明服务在运行）
 $ps -elf | grep mysql
 
-# 停止服务
+# stop 动作：停止服务
 $sudo service mysql stop
 
-# 重启服务（修改配置文件后必须重启才能生效）
+# restart 动作：先停止再启动，即重启服务（修改配置文件后必须重启才能生效）
 $sudo service mysql restart
 ```
 
@@ -295,21 +315,22 @@ $sudo service mysql restart
 **安装时没有配置密码的修改方式：**
 
 ```bash
-# 以系统管理员身份直接进入数据库
+# 以系统管理员身份（sudo）直接进入数据库：不带 -u、-p 参数，凭系统管理员身份免密码登录
 $sudo mysql
 ```
 
 ```sql
--- 8.0 使用 alter user 修改密码；with mysql_native_password 指定认证插件
--- 'root'@'localhost' 表示“从本机登录的 root 用户”
--- by 后面的 '123' 是要设置的新密码，请替换成自己的密码
+-- alter user：修改账户信息的语句（8.0 使用它修改密码）
+-- 'root'@'localhost' 表示“从本机登录的 root 用户”，格式为 '用户名'@'主机'
+-- identified with mysql_native_password：指定认证插件为旧版 mysql_native_password
+-- by '123'：设置新密码为 123（字符串），请替换成自己的密码
 alter user 'root'@'localhost' identified with mysql_native_password by '123';
--- 刷新权限
+-- flush privileges：重新加载权限表，使上面的修改立即生效
 flush privileges;
 ```
 
 ```bash
-# 重启 MySQL 服务
+# 重启 MySQL 服务：service 服务名 动作，restart 表示重启
 $sudo service mysql restart
 ```
 
@@ -322,16 +343,20 @@ $sudo service mysql restart
 > 在工作中**主要使用命令行方式**操作数据库，要求熟练编写 SQL。
 
 ```bash
+# --help：长选项，输出客户端的全部选项和帮助文档
 # 查看命令行客户端的全部选项和帮助文档
 $mysql --help
 
-# 最常用的连接方式：-u 指定用户名，-p 表示接下来提示输入密码（密码不会显示）
+# -u 用户名：指定登录账号（root 为管理员）；-p：不带值，表示回车后提示输入密码（密码不会显示）
+# 最常用的连接方式
 $mysql -u root -p
 
-# 带密码直接登录：-p 与密码之间不能有空格（密码会留在命令历史中，不安全，仅学习使用）
+# -uroot：-u 与用户名可以连写；-p123：-p 紧跟密码，中间不能有空格
+# 带密码直接登录（密码会留在命令历史中，不安全，仅学习使用）
 $mysql -uroot -p123
 
-# 完整格式：-h 服务器地址，-P（大写）端口
+# 完整格式：-h 服务器地址（127.0.0.1 表示本机），-P（大写）端口（默认 3306）
+# 注意 -P 大写是端口，-p 小写是密码，不要混淆
 # 最后的 test_db 是数据库名（需已存在），登录后自动进入该库，相当于省去 use test_db;
 $mysql -h 127.0.0.1 -P 3306 -u root -p test_db
 ```
@@ -341,9 +366,10 @@ $mysql -h 127.0.0.1 -P 3306 -u root -p test_db
 > **退出登录**：输入 `quit` 或 `exit`，或按 `Ctrl + D`。
 
 ```sql
--- 查看 MySQL 服务器的版本号
+-- select 表达式：不查表，直接计算并返回表达式的结果（一行一列）
+-- version()：内置函数，返回服务器版本号（字符串），如 8.0.36
 select version();
--- 显示当前的日期和时间
+-- now()：内置函数，返回当前的日期和时间，格式 YYYY-MM-DD HH:MM:SS
 select now();
 ```
 
@@ -358,30 +384,33 @@ select now();
 > 以下方法用于让**其他机器**能连接到本服务器的 MySQL，**仅用于学习环境，生产环境中不要随意开放 root 远程登录**。
 
 ```bash
-# 以 root 登录
+# 以 root 登录：-u 指定用户名，-p 提示输入密码
 $mysql -u root -p
 ```
 
 ```sql
--- 切换到系统库
+-- use 库名：切换到系统库 mysql（它保存着账户、权限等信息）
 use mysql;
--- 查看原有的账户配置：host 表示允许从哪里登录，localhost 表示仅限本机
+-- 从 user 表中查询 host、user 两列：host 表示允许从哪里登录，localhost 表示仅限本机
 select host,user from user;
--- 把 root 的 host 改成 %（% 表示任意主机）
+-- update 表 set 列=值 where 条件：修改数据
+-- 把 user 为 root 的行的 host 改成 %（% 表示任意主机）
 update user set host='%' where user='root';
--- 刷新权限
+-- flush privileges：重新加载权限表，使修改生效
 flush privileges;
 ```
 
 ```bash
 # 退出 MySQL 后，在系统终端重启服务，使远程访问配置生效
+# service 服务名 动作：mysql 是服务名，restart 表示重启
 $sudo service mysql restart
 ```
 
 **如果还是连不上**，需要修改服务器的绑定地址：
 
 ```bash
-# 编辑 MySQL 的服务端配置文件
+# vim：文本编辑器，参数是要编辑的文件路径；用 sudo 是因为该文件需要管理员权限才能修改
+# 编辑 MySQL 的服务端配置文件（vim 中按 i 进入编辑，按 Esc 后输入 :wq 保存退出）
 $sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
 ```
 
@@ -392,7 +421,7 @@ bind-address = 0.0.0.0
 ```
 
 ```bash
-# 修改配置后必须重启服务
+# 修改配置后必须重启服务，配置才会生效
 $sudo service mysql restart
 ```
 
@@ -438,7 +467,8 @@ $sudo service mysql restart
 **确认监听地址**
 
 ```bash
-# ss：查看套接字；-l 仅监听状态，-n 数字端口，-t 仅 TCP，-p 显示进程；grep 过滤 3306
+# ss：查看套接字（网络连接）；-l 仅显示监听状态，-n 以数字显示端口，-t 仅 TCP，-p 显示所属进程
+# |（管道）把输出交给 grep，grep 3306 只保留包含 3306 的行
 $sudo ss -lntp | grep 3306
 ```
 
@@ -459,22 +489,25 @@ $sudo ss -lntp | grep 3306
 **修改配置**
 
 ```bash
-# 备份配置文件，便于出错时恢复
+# cp 源文件 目标文件：复制文件；这里复制出一份 .bak 备份，便于出错时恢复
 $sudo cp /etc/mysql/mysql.conf.d/mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf.bak
-# 查看 bind-address 所在行号（grep -n 显示行号），本例为第 31 行
+# grep：在文件中搜索文本；-n 显示匹配行的行号；"bind-address" 是要搜索的关键字
+# 查看 bind-address 所在行号，本例为第 31 行
 $sudo grep -n "bind-address" /etc/mysql/mysql.conf.d/mysqld.cnf
-# 将第 31 行的 127.0.0.1 替换为 0.0.0.0（行号以上一条命令的结果为准）
+# sed：流编辑器；-i 直接修改文件本身；'31s/旧/新/' 表示只在第 31 行把“旧”替换为“新”
+# 其中 \. 表示字面的点号（正则中 . 是任意字符，需转义）；行号以上一条命令的结果为准
 $sudo sed -i '31s/127\.0\.0\.1/0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
-# 重启服务使配置生效
+# systemctl：systemd 的服务管理命令；restart 重启 mysql 服务，使配置生效
 $sudo systemctl restart mysql
-# 放行防火墙 3306 端口（ufw 状态为 inactive 时可跳过）
+# ufw：Ubuntu 防火墙工具；allow 放行；3306/tcp 表示 3306 端口的 TCP 协议（inactive 时可跳过）
 $sudo ufw allow 3306/tcp
 ```
 
 **验证**
 
 ```bash
-# 服务器端：监听地址应为 0.0.0.0:3306 或 *:3306
+# ss -lntp：列出监听中的 TCP 端口及进程；grep 3306：只看 3306 端口
+# 在服务器端执行：监听地址应为 0.0.0.0:3306 或 *:3306
 $sudo ss -lntp | grep 3306
 ```
 
@@ -565,10 +598,13 @@ $sudo ss -lntp | grep 3306
 > 例如让一个字段自动记录创建时间和最后修改时间：
 
 ```sql
--- created：插入时自动取当前时间；updated：每次修改该行时自动更新为当前时间
+-- create table 表名(列定义,...)：创建数据表
 create table demo_time(
+    -- id：无符号整数（unsigned，不能为负）；primary key 主键；auto_increment 自动增长
     id int unsigned primary key auto_increment,
+    -- created：创建时间；default current_timestamp 表示插入时不填则自动取当前时间
     created datetime default current_timestamp,
+    -- updated：最后修改时间；on update current_timestamp 表示每次修改该行时自动更新为当前时间
     updated datetime default current_timestamp on update current_timestamp
 );
 ```
@@ -578,9 +614,10 @@ create table demo_time(
 > `enum('值1','值2',...)`：字段的值**只能是列出的值之一**（或 `NULL`）。内部按**序号**存储（从 1 开始），所以插入时既可以写字符串，也可以写序号。
 
 ```sql
--- gender 只能取 男/女/中性/保密 之一；序号分别是 1、2、3、4
+-- 列定义片段（写在 create table 的括号内）：列名 enum('值1','值2',...)
+-- gender 只能取 男/女/中性/保密 之一（或 NULL）；序号分别是 1、2、3、4
 gender enum('男','女','中性','保密')
--- 以下两种写法等价：插入 '女' 或者插入序号 2
+-- 以下两种写法等价：插入字符串 '女'，或者插入序号 2（序号从 1 开始，不是 0）
 -- insert into students(gender) values('女');
 -- insert into students(gender) values(2);
 ```
@@ -605,18 +642,18 @@ gender enum('男','女','中性','保密')
 ### 5.1 数据库操作
 
 ```sql
--- 查看当前服务器上的所有数据库
+-- show databases：列出当前服务器上的所有数据库（结果为一列 Database，每行一个库名）
 show databases;
--- 使用（切换到）某个数据库，之后的操作都针对它：use 数据库名;
+-- use 数据库名：切换到某个数据库，之后的建表、查询等操作都针对它；库必须已存在
 use test_db;
--- 查看当前正在使用的数据库，如果没有选择则返回 NULL
+-- database()：内置函数，返回当前正在使用的数据库名（字符串），如果没有选择则返回 NULL
 select database();
--- 创建数据库：create database 数据库名 charset=字符集;
+-- create database 数据库名 charset=字符集：创建数据库
 -- charset=utf8 指定字符集；utf8 在 MySQL 中最多支持 3 字节字符，如果要存 emoji 表情，应使用 utf8mb4
 create database test_db charset=utf8;
--- 查看数据库的创建语句（可看到字符集等信息）
+-- show create database 数据库名：查看数据库的创建语句（可看到字符集等信息）
 show create database test_db;
--- 删除数据库（会连同库里所有表和数据一起删除，且无法恢复，慎用）
+-- drop database 数据库名：删除数据库（会连同库里所有表和数据一起删除，且无法恢复，慎用）
 drop database test_db;
 ```
 
@@ -627,13 +664,15 @@ drop database test_db;
 **查看表**
 
 ```sql
--- 查看当前数据库中的所有表
+-- show tables：列出当前数据库中的所有表（需先 use 某个库）
 show tables;
--- 查看表结构，完整格式：desc 表名;（desc 是 describe 的简写，也可写作 describe 表名;）
--- 显示每个字段的名称、类型、是否为空、键、默认值、额外信息；这里的 classes 是示例表名，使用时替换为实际表名
+-- desc 表名：查看表结构（desc 是 describe 的简写，也可写作 describe 表名;）
+-- 结果每行对应一个字段，列依次为 Field（字段名）、Type（类型）、Null（是否允许空）、
+-- Key（键，PRI 主键）、Default（默认值）、Extra（额外信息，如 auto_increment）
+-- 这里的 classes 是示例表名，使用时替换为实际表名
 desc classes;
--- 查看表的创建语句，完整格式：show create table 表名;
--- 可看到完整的建表 SQL、引擎、字符集等；这里的 classes 同样是示例表名
+-- show create table 表名：查看表的创建语句
+-- 可看到完整的建表 SQL、引擎（ENGINE）、字符集（CHARSET）等；这里的 classes 同样是示例表名
 show create table classes;
 ```
 
@@ -643,41 +682,49 @@ show create table classes;
 >
 > ```sql
 > -- 方括号 [] 表示可选内容，实际书写时不要写出方括号
+> -- create table 表名(...)：创建表，括号内是各列的定义，列与列之间用逗号分隔
 > create table 表名(
+>     -- 列定义：列名 + 数据类型（必填）+ 约束（可选，如 not null、default、unique）
 >     列名1 数据类型 [约束],
+>     -- 第二列的定义，写法相同
 >     列名2 数据类型 [约束],
+>     -- 省略号表示还可以继续定义更多列（最后一列后面不要加逗号）
 >     ...
 >     -- 表级主键约束：在所有列定义之后单独声明主键，括号内写列名
 >     -- 写一个列为单列主键；写多个列用逗号分隔，如 primary key(a, b)，即联合主键
 >     [primary key(一个或多个列)]
+> -- 右括号结束列定义，分号结束整条语句
 > );
 > ```
 >
 > `auto_increment` 表示自动增长。
 
 ```sql
--- 例：创建班级表 classes
+-- 例：创建班级表 classes（create table 表名(...)：创建表，括号内是各列定义）
 create table classes(
-    -- id：无符号整型，自动增长，主键，非空
+    -- id：int unsigned 无符号整型（不能为负）；auto_increment 自动增长（插入时无需填写）；
+    -- primary key 主键（唯一且非空，唯一标识一行）；not null 不允许为空
     id int unsigned auto_increment primary key not null,
-    -- name：最长 10 个字符的可变长字符串
+    -- name：varchar(10) 变长字符串，最多 10 个字符；未写约束，所以允许为空
     name varchar(10)
+-- 右括号结束列定义，分号结束整条语句
 );
 
 -- 例：创建学生表 students
 create table students(
-    -- 主键，自动增长
+    -- id：无符号整型，主键，自动增长，不为空（约束的书写顺序可以任意）
     id int unsigned primary key auto_increment not null,
-    -- 姓名：最长 20 个字符，默认空字符串
+    -- name：姓名，varchar(20) 最多 20 个字符；default '' 表示不填时默认为空字符串
     name varchar(20) default '',
-    -- 年龄：无符号 tinyint（0~255），默认 0
+    -- age：年龄，tinyint unsigned 无符号 1 字节整数（范围 0~255）；default 0 表示默认 0
     age tinyint unsigned default 0,
-    -- 身高：共 5 位数字，其中 2 位小数，如 181.50（单位 cm）
+    -- height：身高，decimal(5,2) 定点数，共 5 位数字，其中 2 位是小数，如 181.50（单位 cm）
     height decimal(5,2),
-    -- 性别：枚举，只能是这四个值之一
+    -- gender：性别，enum 枚举类型，只能取这四个值之一（序号 1~4），也可以为 NULL
     gender enum('男','女','中性','保密'),
-    -- 所属班级编号：无符号整型，默认 0（对应 classes 表的 id）
+    -- cls_id：所属班级编号，无符号整型，默认 0（对应 classes 表的 id，这里没有外键约束）
     cls_id int unsigned default 0
+-- 右括号结束列定义，分号结束整条语句
 );
 ```
 
@@ -693,26 +740,28 @@ create table students(
 | 删除字段 | `alter table 表名 drop 列名;` | 删除该字段及其所有数据 |
 
 ```sql
--- 添加字段：给 students 增加 birthday（生日，日期时间类型）
+-- 添加字段：alter table 表名 add 列名 类型;
+-- 给 students 增加 birthday（生日，datetime 日期时间类型），新字段加在表的最后
 alter table students add birthday datetime;
--- 修改字段（重命名版）：把 birthday 改名为 birth，同时设置为 datetime 且不允许为空
+-- 修改字段（重命名版）：alter table 表名 change 原名 新名 类型及约束;
+-- 把 birthday 改名为 birth，同时设置为 datetime 且 not null 不允许为空
 -- （建议在空表或没有 NULL 数据时执行，否则非严格模式下旧数据会被转成零值，严格模式下会报错）
 alter table students change birthday birth datetime not null;
--- 修改字段（不重命名版）：只修改 birth 的类型为 date，仍然不允许为空
+-- 修改字段（不重命名版）：alter table 表名 modify 列名 类型及约束;
+-- 只修改 birth 的类型为 date（只存日期），仍然不允许为空；列名只写一次
 alter table students modify birth date not null;
--- 删除字段：删除 birth 字段（讲义中写的是 drop birthday，但此时字段已改名为 birth，所以这里用 birth）
+-- 删除字段：alter table 表名 drop 列名;
+-- 删除 birth 字段及其全部数据（讲义中写的是 drop birthday，但此时字段已改名为 birth，所以这里用 birth）
 alter table students drop birth;
 ```
 
 **删除表**
 
 ```sql
--- 删除整张表（结构和数据一起删除，无法恢复）
+-- drop table 表名：删除整张表（结构和数据一起删除，无法恢复）；表不存在时会报错
 drop table students;
--- 推荐：表存在才删除，避免报错
+-- drop table if exists 表名：推荐写法，表存在才删除，表不存在也不会报错
 drop table if exists students;
--- 查看表的创建语句
-show create table classes;
 ```
 
 > **三个“删除”的区别（补充）**：
@@ -730,17 +779,25 @@ show create table classes;
 > 为便于演示，本章假定 `students` 表的结构如下（在 5.2 的基础上增加了 `birth` 列）：
 
 ```sql
--- 重新创建演示用的学生表（先删除旧表）
+-- 重新创建演示用的学生表：先用 drop table if exists 删除旧表（不存在也不报错）
 drop table if exists students;
+-- 创建学生表 students
 create table students(
+    -- id：无符号整型，主键，自动增长，不为空
     id int unsigned primary key auto_increment not null,
+    -- name：姓名，最多 20 个字符，默认空字符串
     name varchar(20) default '',
+    -- age：年龄，无符号 tinyint（0~255），默认 0
     age tinyint unsigned default 0,
+    -- height：身高，共 5 位数字，其中 2 位小数（单位 cm）
     height decimal(5,2),
+    -- gender：性别，枚举，只能取这四个值之一
     gender enum('男','女','中性','保密'),
+    -- cls_id：所属班级编号，无符号整型，默认 0
     cls_id int unsigned default 0,
-    -- 生日：日期类型，允许为空
+    -- birth：生日，date 日期类型（格式 YYYY-MM-DD），允许为空
     birth date
+-- 右括号结束列定义，分号结束整条语句
 );
 -- 如果 classes 表不存在，也需要创建（见 5.2）
 ```
@@ -748,9 +805,10 @@ create table students(
 ### 6.1 查询基本使用
 
 ```sql
+-- select 列 from 表名：查询数据，结果是一张“结果集”（行 × 列的表格）
 -- 查询所有列：* 表示所有字段（实际开发中不推荐，应写明需要的列）
 select * from classes;
--- 查询指定列：多个列用逗号分隔，可以用 as 为列或表指定别名
+-- 查询指定列：多个列用逗号分隔，只返回 id、name 两列；可以用 as 为列或表指定别名
 select id,name from classes;
 ```
 
@@ -764,14 +822,17 @@ select id,name from classes;
 > - 字符串、日期要用**单引号**引起来
 
 ```sql
--- 1) 全列插入：值的顺序必须与表中字段的顺序一一对应；id 用 0 占位，由 MySQL 自动生成
+-- 1) 全列插入：insert into 表名 values(值1,值2,...);
+-- 值的顺序必须与表中字段的顺序一一对应（id,name,age,height,gender,cls_id,birth）
+-- 依次是：id 用 0 占位由 MySQL 自动生成，姓名，年龄，身高，性别，班级编号，生日
 insert into students values(0,'郭靖',20,181.00,'男',1,'2016-1-2');
--- 2) 部分列插入：值的顺序与给出的列顺序对应；没写的列使用默认值（没有默认值则为 NULL）
+-- 2) 部分列插入：insert into 表名(列1,列2) values(值1,值2);
+-- 值的顺序与给出的列顺序对应；没写的列使用默认值（没有默认值则为 NULL）
 insert into students(name,birth) values('黄蓉','2016-3-2');
--- 3) 多行插入：一条语句插入多行，可以减少与数据库的通信次数，效率更高
--- 3.1 全列多行插入
+-- 3) 多行插入：一条语句插入多行，多组值用逗号分隔，可以减少与数据库的通信次数，效率更高
+-- 3.1 全列多行插入：一次向 classes 插入两个班级，id 都用 0 占位自动生成
 insert into classes values(0,'python1'),(0,'python2');
--- 3.2 部分列多行插入
+-- 3.2 部分列多行插入：只给 name 列赋值，一次插入三个学生，其余列用默认值
 insert into students(name) values('杨康'),('杨过'),('小龙女');
 ```
 
@@ -782,9 +843,10 @@ insert into students(name) values('杨康'),('杨过'),('小龙女');
 > **务必写 `where` 条件**，否则会修改表中**所有行**！
 
 ```sql
--- 把 id 为 5 的学生的性别改为 2（枚举序号 2，即 '女'）
+-- update 表名 set 列=值 where 条件：修改满足条件的行；不写 where 会修改全表
+-- 把 id 为 5 的学生的性别改为 2（枚举序号 2，即 '女'）；where id=5 限定只改这一行
 update students set gender=2 where id=5;
--- 同时修改多列：用逗号分隔
+-- 同时修改多列：set 后面多个“列=值”用逗号分隔；这里把 id=1 的学生年龄改为 21、身高改为 170.50
 update students set age=21,height=170.50 where id=1;
 ```
 
@@ -795,6 +857,7 @@ update students set age=21,height=170.50 where id=1;
 > **务必写 `where` 条件**，否则会删除表中**所有数据**！
 
 ```sql
+-- delete from 表名 where 条件：删除满足条件的行；不写 where 会删除全表数据
 -- 物理删除：把 id 为 5 的学生从表中彻底删除（无法找回）
 delete from students where id=5;
 ```
@@ -804,11 +867,12 @@ delete from students where id=5;
 > 数据是否重要，要根据实际开发决定；不重要的数据可以直接物理删除。
 
 ```sql
--- 给 students 增加逻辑删除标记列：bit 类型，默认 0 表示“未删除”
+-- alter table 表名 add 列名 类型：给 students 增加逻辑删除标记列
+-- bit 是位类型（只存 0 或 1）；default 0 表示默认 0，即“未删除”
 alter table students add isdelete bit default 0;
--- 逻辑删除：id 为 1 的学生标记为已删除
+-- 逻辑删除：本质是 update，把 id 为 1 的学生标记为已删除（数据仍留在表中）
 update students set isdelete=1 where id=1;
--- 查询时只查没被删除的
+-- 查询时加 where isdelete=0，只查没被删除的数据，被标记的行就“看不见”了
 select * from students where isdelete=0;
 ```
 
@@ -819,28 +883,32 @@ select * from students where isdelete=0;
 **备份**
 
 ```bash
-# mysqldump：导出数据库为 SQL 脚本文件
-# -u 用户名；-p 回车后按提示输入密码；test_db 是要备份的数据库名；> 表示把输出重定向到文件
+# mysqldump：MySQL 自带的备份工具，把数据库导出为 SQL 脚本（建表语句 + insert 语句）
+# -u 用户名（root）；-p 不带值，回车后按提示输入密码
+# test_db：要备份的数据库名；> 表示把输出重定向（保存）到后面的文件
+# test_db.sql：备份文件名，保存在当前目录
 $mysqldump -uroot -p test_db > test_db.sql
 ```
 
 **恢复**
 
 ```bash
-# 第 1 步：连接 MySQL，创建一个新的空数据库（恢复时数据库必须已存在）
+# 第 1 步：连接 MySQL，准备创建一个新的空数据库（恢复时数据库必须已存在）
+# -u 指定用户名，-p 提示输入密码
 $mysql -uroot -p
 ```
 
 ```sql
--- 创建用于恢复的新数据库
+-- 创建用于恢复的新数据库，charset=utf8 指定字符集
 create database test_db_new charset=utf8;
--- 退出客户端
+-- quit：退出 mysql 客户端，回到系统终端（等价于 exit）
 quit
 ```
 
 ```bash
 # 第 2 步：用 < 把 SQL 文件作为输入交给 mysql 执行，从而重建表和数据
-# test_db_new 是刚创建的目标数据库名；根据提示输入密码
+# -u 用户名；-p 提示输入密码；test_db_new 是刚创建的目标数据库名
+# < test_db.sql：输入重定向，把备份文件的内容当作要执行的 SQL
 $mysql -uroot -p test_db_new < test_db.sql
 ```
 
@@ -921,14 +989,16 @@ $mysql -uroot -p test_db_new < test_db.sql
 > **想一想**：举些例子，满足一对一、一对多、多对多的对应关系？例如：丈夫—妻子（一对一）、部门—员工（一对多）、老师—学生、作者—书籍（多对多）。
 
 ```sql
--- 多对多示例：学生选课的关系表（中间表）
+-- 多对多示例：学生选课的关系表（中间表），只存两个表的主键值
 create table student_course(
-    -- 学生编号：对应 students.id
+    -- student_id：学生编号，无符号整型，存放 students 表的 id
     student_id int unsigned,
-    -- 课程编号：对应 courses.id
+    -- course_id：课程编号，无符号整型，存放 courses 表的 id
     course_id int unsigned,
-    -- 联合主键：同一个学生不能重复选同一门课
+    -- 联合主键：primary key(列1, 列2)，两列的组合不能重复，
+    -- 即同一个学生不能重复选同一门课（但一个学生可以选多门课，一门课可以有多个学生）
     primary key(student_id, course_id)
+-- 右括号结束列定义，分号结束整条语句
 );
 ```
 
@@ -937,11 +1007,13 @@ create table student_course(
 > 以“班级（一）对学生（多）”为例，在学生表的 `cls_id` 上添加外键，引用班级表的 `id`。
 
 ```sql
+-- alter table 表名 add foreign key (本表列) references 被引用表(被引用列);
 -- 给 students 表的 cls_id 字段添加外键约束，引用 classes 表的 id 字段
 -- 注意：两个字段的类型必须一致（这里都是 int unsigned），被引用的字段必须是主键或有索引，表引擎需要是 InnoDB
 -- 如果表中已有数据，已有的 cls_id 必须都能在 classes.id 中找到，否则添加失败
 alter table students add foreign key (cls_id) references classes(id);
--- 插入时 cls_id 必须在 classes 中存在，否则报错（Cannot add or update a child row）
+-- 插入一个学生：列依次是 name（姓名）、birth（生日）、cls_id（班级编号，外键列）
+-- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
 insert into students(name,birth,cls_id) values('张三','2020-1-9',1);
 ```
 
@@ -965,58 +1037,76 @@ insert into students(name,birth,cls_id) values('张三','2020-1-9',1);
 ### 8.1 创建数据库与数据表
 
 ```sql
--- 创建数据库
+-- create database 库名 charset=字符集：创建测试数据库，字符集为 utf8
 create database python_test_1 charset=utf8;
--- 使用数据库
+-- use 库名：切换到该数据库，之后的建表和查询都在这个库中进行
 use python_test_1;
 
--- 创建 students 表
+-- 创建 students 表（学生表）
 create table students(
-    -- 主键，自动增长
+    -- id：无符号整型，主键，自动增长，不为空
     id int unsigned primary key auto_increment not null,
-    -- 姓名
+    -- name：姓名，最多 20 个字符，默认空字符串
     name varchar(20) default '',
-    -- 年龄
+    -- age：年龄，无符号 tinyint（0~255），默认 0
     age tinyint unsigned default 0,
-    -- 身高（cm）
+    -- height：身高（cm），共 5 位数字，其中 2 位小数
     height decimal(5,2),
-    -- 性别：枚举，默认 '保密'；序号 1=男，2=女，3=中性，4=保密
+    -- gender：性别，枚举，默认 '保密'；序号 1=男，2=女，3=中性，4=保密
     gender enum('男','女','中性','保密') default '保密',
-    -- 所属班级编号
+    -- cls_id：所属班级编号，无符号整型，默认 0（对应 classes.id，未建外键）
     cls_id int unsigned default 0,
-    -- 逻辑删除标记：bit 类型，0=未删除，1=已删除
+    -- is_delete：逻辑删除标记，bit 类型，0=未删除，1=已删除
     is_delete bit default 0
+-- 右括号结束列定义，分号结束整条语句
 );
 
--- 创建 classes 表
+-- 创建 classes 表（班级表）
 create table classes (
+    -- id：无符号整型，主键，自动增长，不为空
     id int unsigned auto_increment primary key not null,
-    -- 班级名称，不允许为空
+    -- name：班级名称，最多 30 个字符，not null 不允许为空
     name varchar(30) not null
+-- 右括号结束列定义，分号结束整条语句
 );
 ```
 
 ### 8.2 准备数据
 
 ```sql
--- 向 students 表中插入数据（gender 用枚举序号：1=男 2=女 3=中性 4=保密）
+-- 向 students 表中插入 14 行数据（gender 用枚举序号：1=男 2=女 3=中性 4=保密）
+-- 列依次是：姓名、年龄、身高、性别序号、班级编号、是否逻辑删除；id 不写，由自增生成
 insert into students(name,age,height,gender,cls_id,is_delete) values
+-- 小明：18 岁，180cm，性别 2（女），1 班，未删除
 ('小明', 18, 180.00, 2, 1, 0),
+-- 小月月：18 岁，180cm，女，2 班，已删除
 ('小月月', 18, 180.00, 2, 2, 1),
+-- 彭于晏：29 岁，185cm，性别 1（男），1 班，未删除
 ('彭于晏', 29, 185.00, 1, 1, 0),
+-- 刘德华：59 岁，175cm，男，2 班，已删除
 ('刘德华', 59, 175.00, 1, 2, 1),
+-- 黄蓉：38 岁，160cm，女，1 班，未删除
 ('黄蓉', 38, 160.00, 2, 1, 0),
+-- 凤姐：28 岁，150cm，性别 4（保密），2 班，已删除
 ('凤姐', 28, 150.00, 4, 2, 1),
+-- 王祖贤：18 岁，172cm，女，1 班，已删除
 ('王祖贤', 18, 172.00, 2, 1, 1),
+-- 周杰伦：36 岁，身高 NULL（未填写，后面空判断用），男，1 班，未删除
 ('周杰伦', 36, NULL, 1, 1, 0),
+-- 程坤：27 岁，181cm，男，2 班，未删除
 ('程坤', 27, 181.00, 1, 2, 0),
+-- 刘亦菲：25 岁，166cm，女，2 班，未删除
 ('刘亦菲', 25, 166.00, 2, 2, 0),
+-- 金星：33 岁，162cm，性别 3（中性），3 班（班级表中不存在），已删除
 ('金星', 33, 162.00, 3, 3, 1),
+-- 静香：12 岁，180cm，女，4 班（班级表中不存在），未删除
 ('静香', 12, 180.00, 2, 4, 0),
+-- 郭靖：12 岁，170cm，男，4 班（班级表中不存在），未删除
 ('郭靖', 12, 170.00, 1, 4, 0),
+-- 周杰：34 岁，176cm，女，5 班（班级表中不存在），未删除；最后一行以分号结束
 ('周杰', 34, 176.00, 2, 5, 0);
 
--- 向 classes 表中插入数据
+-- 向 classes 表中插入数据：全列插入，id 用 0 占位自动生成，所以会得到 id=1、2 两个班级
 insert into classes values (0, 'python_01期'), (0, 'python_02期');
 ```
 
@@ -1049,8 +1139,10 @@ insert into classes values (0, 'python_01期'), (0, 'python_02期');
 
 ```sql
 -- 查询所有字段：select * from 表名;
+-- * 是通配符，代表表中所有列；结果为 14 行 × 7 列的结果集
 select * from students;
 -- 查询指定字段：select 列1,列2,... from 表名;
+-- 只返回 name 一列，结果为 14 行 × 1 列
 select name from students;
 ```
 
@@ -1059,14 +1151,15 @@ select name from students;
 > `as` 可以给**字段**或**表**起别名（`as` 可以省略，但建议写上，更清晰）。别名常用于：让结果列名更易读；表名太长时简写；同一张表自连接时区分（见第十七章）。
 
 ```sql
--- 给字段起别名：结果集的列标题变为 序号、名字、性别
+-- 给字段起别名：列 as 别名；只改变结果集的列标题，不改变表结构
+-- 结果集的列标题变为 序号、名字、性别
 select id as 序号, name as 名字, gender as 性别 from students;
 
--- 如果是单表查询，可以省略表名
+-- 如果是单表查询，列名前可以省略表名，直接写列名
 select id, name, gender from students;
 -- 也可以用 表名.字段名 的形式（多表查询时用来区分同名字段）
 select students.id, students.name, students.gender from students;
--- 通过 as 给表起别名：之后用别名 s 引用该表
+-- 通过 as 给表起别名：from 表名 as 别名；之后用别名 s 引用该表，写起来更简短
 select s.id, s.name, s.gender from students as s;
 ```
 
@@ -1079,9 +1172,10 @@ select s.id, s.name, s.gender from students as s;
 > **注意**：`distinct` 作用于**后面所有列的组合**，即多个列时，是这些列的组合重复才去重。
 
 ```sql
+-- distinct：放在 select 之后、列之前，消除结果中完全重复的行
 -- 查询学生表中出现过的性别（去重，只显示 男/女/中性/保密 四种）
 select distinct gender from students;
--- 多列去重：(gender, cls_id) 组合相同的才会被去重
+-- 多列去重：只有 (gender, cls_id) 两列的组合都相同的行才会被去重
 select distinct gender, cls_id from students;
 ```
 
@@ -1096,7 +1190,8 @@ select distinct gender, cls_id from students;
 > `where` 后面支持多种运算符：比较运算符、逻辑运算符、模糊查询、范围查询、空判断。
 
 ```sql
--- 查询 id 为 1 的学生
+-- where 条件：对原始行进行筛选，结果为真的行才会出现在结果集中
+-- 查询 id 为 1 的学生；= 是比较运算符（等于），不是赋值，id 是主键，所以最多返回 1 行
 select * from students where id=1;
 ```
 
@@ -1112,13 +1207,13 @@ select * from students where id=1;
 | `!=` 或 `<>` | 不等于 | 讲义标注“低效率操作，不要使用”：不等于通常无法利用索引，大表上应尽量避免 |
 
 ```sql
--- 例 1：查询编号大于 3 的学生
+-- 例 1：查询编号大于 3 的学生；> 表示大于，结果为 id 4~14 的 11 行
 select * from students where id > 3;
--- 例 2：查询编号不大于 4 的学生
+-- 例 2：查询编号不大于 4 的学生；<= 表示小于等于，结果为 id 1~4 的 4 行
 select * from students where id <= 4;
--- 例 3：查询姓名不是“黄蓉”的学生
+-- 例 3：查询姓名不是“黄蓉”的学生；!= 表示不等于（也可写 <>），字符串要用单引号
 select * from students where name != '黄蓉';
--- 例 4：查询没被删除的学生（is_delete 是 bit 类型，0 表示未删除）
+-- 例 4：查询没被删除的学生（is_delete 是 bit 类型，0 表示未删除，1 表示已删除）
 select * from students where is_delete=0;
 ```
 
@@ -1132,8 +1227,10 @@ select * from students where is_delete=0;
 
 ```sql
 -- 例 5：查询编号大于 3 的女同学
+-- and：两边条件都为真才保留；gender=2 是枚举序号 2，即 '女'
 select * from students where id > 3 and gender=2;
 -- 例 6：查询编号小于 4 或没被删除的学生
+-- or：两边条件任意一个为真就保留；is_delete=0 表示未删除
 select * from students where id < 4 or is_delete=0;
 ```
 
@@ -1146,10 +1243,13 @@ select * from students where id < 4 or is_delete=0;
 
 ```sql
 -- 例 7：查询姓黄的学生（黄 + 任意多个字符）
+-- like：模糊匹配；% 匹配零个或任意多个字符，所以 '黄%' 匹配以“黄”开头的所有姓名
 select * from students where name like '黄%';
 -- 例 8：查询姓黄并且“名”是一个字的学生（黄 + 恰好 1 个字符）
+-- _ 恰好匹配一个任意字符，所以 '黄_' 只匹配两个字的姓名，如“黄蓉”
 select * from students where name like '黄_';
 -- 例 9：查询姓黄或名字以“靖”结尾的学生
+-- '%靖' 匹配以“靖”结尾的姓名；两个 like 条件用 or 连接
 select * from students where name like '黄%' or name like '%靖';
 ```
 
@@ -1164,10 +1264,13 @@ select * from students where name like '黄%' or name like '%靖';
 
 ```sql
 -- 例 10：查询编号是 1 或 3 或 8 的学生
+-- in (值列表)：id 等于列表中任意一个值即可，适合不连续的范围
 select * from students where id in (1,3,8);
 -- 例 11：查询编号为 3 至 8 的学生（包含 3 和 8）
+-- between 小值 and 大值：闭区间，包含两端，小值必须写在前面
 select * from students where id between 3 and 8;
 -- 例 12：查询编号是 3 至 8 的男生
+-- 范围条件与 gender=1（男）用 and 连接，两个条件同时满足
 select * from students where id between 3 and 8 and gender=1;
 ```
 
@@ -1182,10 +1285,13 @@ select * from students where id between 3 and 8 and gender=1;
 
 ```sql
 -- 例 13：查询没有填写身高的学生（结果：周杰伦）
+-- is null：判断列值是否为 NULL，不能写成 height = null
 select * from students where height is null;
 -- 例 14：查询填写了身高的学生
+-- is not null：判断列值是否不为 NULL
 select * from students where height is not null;
 -- 例 15：查询填写了身高的男生
+-- 空判断与 gender=1（男）用 and 连接
 select * from students where height is not null and gender=1;
 ```
 
@@ -1196,9 +1302,11 @@ select * from students where height is not null and gender=1;
 > 在逻辑运算符中，**`and` 比 `or` 先运算**。如果同时出现，并希望先算 `or`，需要结合小括号 `()` 使用。
 
 ```sql
--- 没有括号：先算 and，即 “(性别=男 且 id>10) 或 (is_delete=0)”
+-- 没有括号：and 优先级高于 or，先算 and
+-- 即 “(性别=男 且 id>10) 或 (is_delete=0)”
 select * from students where gender=1 and id>10 or is_delete=0;
--- 加括号：先算 or，即 “性别=男 且 (id>10 或 is_delete=0)”，两条语句结果不同
+-- 加括号：括号内优先计算，先算 or
+-- 即 “性别=男 且 (id>10 或 is_delete=0)”，两条语句结果不同
 select * from students where gender=1 and (id>10 or is_delete=0);
 ```
 
@@ -1219,11 +1327,14 @@ select * from students where gender=1 and (id>10 or is_delete=0);
 
 ```sql
 -- 例 1：查询未删除男生信息，按学号降序
+-- where 先筛选出男生且未删除的行；order by id desc 再按 id 从大到小排序
 select * from students where gender=1 and is_delete=0 order by id desc;
 -- 例 2：查询未删除学生信息，按名称升序（asc 可省略；中文按字符集的排序规则排序，不是拼音顺序）
 select * from students where is_delete=0 order by name;
 -- 例 3：显示所有学生信息，先按年龄从大到小排序，年龄相同时按身高从高到矮排序
+-- 语句较长，可以跨多行书写，到分号才结束
 select * from students
+-- order by 后多个排序列用逗号分隔：先按 age 降序，age 相同再按 height 降序
 order by age desc, height desc;
 ```
 
@@ -1251,16 +1362,22 @@ order by age desc, height desc;
 
 ```sql
 -- 例 1：查询学生总数（结果：14）
+-- count(*)：统计结果集的总行数，返回一个整数
 select count(*) from students;
 -- 例 2：查询女生的编号最大值（结果：13）
+-- where 先筛出女生（gender=2），max(id) 再取这些行 id 的最大值
 select max(id) from students where gender=2;
 -- 例 3：查询未删除的学生最小编号（结果：1）
+-- where 先筛出未删除的行，min(id) 再取最小值
 select min(id) from students where is_delete=0;
 -- 例 4：查询男生的总年龄（29+59+36+27+12=163）
+-- sum(age)：对筛选出的男生的 age 求和
 select sum(age) from students where gender=1;
 -- 平均年龄：总年龄 / 人数（结果：32.6，等价于 avg(age)）
+-- 两个聚合函数可以在同一个表达式中做除法运算
 select sum(age)/count(*) from students where gender=1;
 -- 例 5：查询未删除女生的编号平均值（id 为 1、5、10、12、13，平均值 8.2）
+-- avg(id)：求筛选出的行的 id 平均值，忽略 NULL
 select avg(id) from students where is_delete=0 and gender=2;
 ```
 
@@ -1273,7 +1390,8 @@ select avg(id) from students where is_delete=0 and gender=2;
 > **含义**：将查询结果按照 **1 个或多个字段**进行分组，**字段值相同的为一组**。`group by` 可用于单个字段分组，也可用于多个字段分组。
 
 ```sql
--- 按性别分组：gender 共有 4 个不同的值，所以分为 4 组
+-- group by 列：按该列的值分组，值相同的行归为一组
+-- 按性别分组：gender 共有 4 个不同的值，所以分为 4 组，结果 4 行，每组只显示一条
 select gender from students group by gender;
 ```
 
@@ -1297,7 +1415,8 @@ select gender from students group by gender;
 > `group_concat(字段名)` 可以作为一个输出字段使用，表示**分组之后，把每一组的某字段的值拼接成一个字符串**（`concat` 是“构造合并”的含义，默认用逗号分隔）。
 
 ```sql
--- 每个性别分组下，有哪些人的姓名
+-- group_concat(name)：把每一组中所有的 name 拼接成一个字符串，默认用逗号分隔
+-- 每个性别分组下，有哪些人的姓名；结果每组一行，第二列为拼接后的字符串
 select gender, group_concat(name) from students group by gender;
 ```
 
@@ -1313,6 +1432,7 @@ select gender, group_concat(name) from students group by gender;
 ```
 
 ```sql
+-- 同理，group_concat(id) 把每一组的 id 拼接起来（整数会被转成字符串）
 -- 每个性别分组下，有哪些学生的 id
 select gender, group_concat(id) from students group by gender;
 ```
@@ -1333,7 +1453,8 @@ select gender, group_concat(id) from students group by gender;
 > 既然可以统计出每个分组的某字段的值的集合，那么也可以用**聚合函数**对每组的值做计算：每个分组算一个结果。
 
 ```sql
--- 分别统计每种性别的平均年龄
+-- 配合聚合函数，每个分组各计算出一个结果：avg(age) 求每组的平均年龄
+-- 分别统计每种性别的平均年龄；结果 4 行，列为 gender、avg(age)（小数）
 select gender, avg(age) from students group by gender;
 ```
 
@@ -1349,7 +1470,8 @@ select gender, avg(age) from students group by gender;
 ```
 
 ```sql
--- 分别统计每种性别的人数
+-- count(*) 在分组查询中统计的是每一组的行数
+-- 分别统计每种性别的人数；结果 4 行，列为 gender、count(*)（整数）
 select gender, count(*) from students group by gender;
 ```
 
@@ -1381,6 +1503,7 @@ select gender, count(*) from students group by gender;
 > ---
 
 ```sql
+-- having 条件：在分组之后对各组的结果再过滤，条件中可以使用聚合函数
 -- 查询人数大于 2 的性别分组（中性、保密各只有 1 人，被过滤掉）
 select gender, count(*) from students group by gender having count(*) > 2;
 ```
@@ -1396,7 +1519,9 @@ select gender, count(*) from students group by gender having count(*) > 2;
 
 ```sql
 -- where 和 having 同时使用：先用 where 过滤出未删除的学生，再分组，再用 having 过滤人数
+-- 第一行：where is_delete=0 在分组之前过滤原始行
 select gender, count(*) from students where is_delete=0
+-- 第二行：group by 按性别分组；having 过滤出人数大于 2 的组
 group by gender having count(*) > 2;
 ```
 
@@ -1405,7 +1530,8 @@ group by gender having count(*) > 2;
 > `with rollup` 的作用是：在最后**新增一行**，用来记录当前列里**所有记录的汇总**（该行分组列的值为 `NULL`）。如果使用 `having`，要放在 `with rollup` 之后。
 
 ```sql
--- 按性别统计人数，并在最后一行汇总总人数
+-- with rollup：写在 group by 之后，在结果最后追加一行汇总行，该行分组列的值为 NULL
+-- 按性别统计人数，并在最后一行汇总总人数（5+7+1+1=14）
 select gender, count(*) from students group by gender with rollup;
 ```
 
@@ -1422,7 +1548,8 @@ select gender, count(*) from students group by gender with rollup;
 ```
 
 ```sql
--- 与 group_concat 结合：最后一行把所有年龄汇总在一起
+-- 与 group_concat 结合：先按性别分组拼接各组年龄，with rollup 追加的汇总行拼接全部年龄
+-- 最后一行把所有年龄汇总在一起
 select gender, group_concat(age) from students group by gender with rollup;
 ```
 
@@ -1464,17 +1591,28 @@ select gender, group_concat(age) from students group by gender with rollup;
 ```sql
 -- 按班级分组，在每个班级内按年龄从大到小排名：
 -- rank1：rank() 排名；dese_rank：dense_rank() 排名；row_num：row_number() 行号
+-- 第一行：* 保留原表所有列，后面追加三个计算列（窗口函数不合并行，仍是 14 行）
 select *,
+    -- over (...) 定义窗口：partition by cls_id 按班级分窗口，order by age desc 窗口内按年龄降序
+    -- rank()：并列排名，并列后跳号（1,2,2,4）
     rank() over (partition by cls_id order by age desc) as rank1,
+    -- dense_rank()：密集排名，并列后不跳号（1,2,2,3）
     dense_rank() over (partition by cls_id order by age desc) as dese_rank,
+    -- row_number()：行号，不并列，依次编号（1,2,3,4）
     row_number() over (partition by cls_id order by age desc) as row_num
+-- 数据来源：students 表
 from students;
 
 -- 不分组，对全体学生按年龄从大到小排名
+-- 省略 partition by，整张表就是一个窗口
 select *,
+    -- 全体学生的 rank() 排名
     rank() over (order by age desc) as rank1,
+    -- 全体学生的 dense_rank() 排名
     dense_rank() over (order by age desc) as dese_rank,
+    -- 全体学生的 row_number() 行号
     row_number() over (order by age desc) as row_num
+-- 数据来源：students 表
 from students;
 ```
 
@@ -1495,9 +1633,10 @@ from students;
 > 也可写作 `limit count offset start`；如果只写一个数 `limit count`，等价于 `limit 0, count`。
 
 ```sql
--- 例 1：查询前 3 行男生信息（从第 0 行开始，取 3 条）
+-- limit start,count：start 是起始行下标（从 0 开始，int），count 是最多取的行数（int）
+-- 例 1：查询前 3 行男生信息（从第 0 行开始，取 3 条）；where 先筛选，limit 再截取
 select * from students where gender=1 limit 0,3;
--- 取第 4~6 行：从第 3 行开始，取 3 条
+-- 取第 4~6 行：从第 3 行开始（跳过前 3 行），取 3 条
 select * from students limit 3,3;
 ```
 
@@ -1514,11 +1653,12 @@ select * from students limit 3,3;
 > **求第 `n` 页的数据**：`limit (n-1)*m, m`
 
 ```sql
--- 总页数：每页 5 条，用 ceiling() 向上取整（students 有 14 条，14/5=2.8，向上取整为 3）
+-- 总页数：每页 5 条，count(*)/5 得到小数，ceiling() 是向上取整函数
+-- （students 有 14 条，14/5=2.8，向上取整为 3）
 select ceiling(count(*)/5) from students;
 -- 第 n 页的数据（每页 m 条）：讲义写作 limit (n-1)*m,m
 -- 注意：limit 后面只能写数字，不能直接写表达式，(n-1)*m 要由程序先算好
--- 例：每页 5 条，第 3 页，则 (3-1)*5=10，即 limit 10,5
+-- 例：每页 5 条，第 3 页，则 (3-1)*5=10，即 limit 10,5（跳过前 10 行，取 5 行）
 select * from students where is_delete=0 limit 10,5;
 ```
 
@@ -1550,10 +1690,12 @@ select * from students where is_delete=0 limit 10,5;
 
 ```sql
 -- 例 1：内连接，查询学生与班级的对应数据
+-- inner join：只保留两表匹配的行；on 后是连接条件：学生的 cls_id 等于班级的 id
 -- 只有 cls_id 为 1、2 的学生才能在 classes 中找到班级，所以结果是 10 行
 select * from students inner join classes on students.cls_id = classes.id;
 
 -- 例 2：左连接（以学生表为主）：14 个学生全部保留，cls_id 为 3、4、5 的学生，班级信息为 NULL
+-- as s / as c：分别给两张表起别名，后面用 s、c 引用，书写更简短
 select * from students as s left join classes as c on s.cls_id = c.id;
 
 -- 例 3：右连接（以班级表为主）：班级表的所有班级都保留，没有学生的班级学生信息为 NULL
@@ -1561,6 +1703,7 @@ select * from students as s left join classes as c on s.cls_id = c.id;
 select * from students as s right join classes as c on s.cls_id = c.id;
 
 -- 例 4：查询学生姓名及班级名称（只选部分列，两个表都有 name 列，必须用别名区分）
+-- s.name 是学生姓名，c.name 是班级名称，结果为 10 行 × 2 列
 select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id;
 ```
 
@@ -1599,18 +1742,23 @@ select s.name, c.name from students as s inner join classes as c on s.cls_id = c
 > - 表结构不变，还可以继续添加区县、乡镇街道、村社区等信息
 
 ```sql
--- 创建 areas 表：aid 主键，atitle 名称，pid 上级编号（省的 pid 为 NULL）
+-- 创建 areas 表：同一张表存放省、市、区县各级地区
 create table areas(
+    -- aid：地区编号，整型，主键
     aid int primary key,
+    -- atitle：地区名称，最多 20 个字符
     atitle varchar(20),
+    -- pid：上级地区的编号，整型；省没有上级，所以 pid 为 NULL
     pid int
+-- 右括号结束列定义，分号结束整条语句
 );
 ```
 
 ```sql
--- 从 SQL 脚本文件中导入数据（areas.sql 需要在当前目录或写完整路径）
+-- source 文件名：mysql 客户端命令，执行 SQL 脚本文件里的所有语句，常用于导入数据
+-- areas.sql 需要在启动 mysql 客户端时的当前目录下，或写完整路径
 source areas.sql;
--- 查询一共有多少个省（省的 pid 为 NULL）
+-- 查询一共有多少个省：省没有上级，pid 为 NULL，判空要用 is null；count(*) 统计行数
 select count(*) from areas where pid is null;
 ```
 
@@ -1619,14 +1767,20 @@ select count(*) from areas where pid is null;
 ```sql
 -- 例 1：查询省的名称为“山西省”的所有城市
 -- c 代表“城市”（下级），p 代表“省”（上级）；连接条件：城市的 pid = 省的 aid
+-- 第一行：c.* 表示只返回别名 c（城市）的所有列；from areas as c 把 areas 当作“城市表”
 select c.* from areas as c
+-- 第二行：再把 areas 当作“省表” p 做内连接，on 指定城市的 pid 等于省的 aid
 inner join areas as p on c.pid = p.aid
+-- 第三行：只保留省名称为“山西省”的行，从而得到山西省的所有城市
 where p.atitle = '山西省';
 
 -- 例 2：查询市的名称为“广州市”的所有区县
 -- dis 代表区县，city 代表市
+-- 第一行：dis.* 只返回区县的所有列；from areas as dis 把 areas 当作“区县表”
 select dis.* from areas as dis
+-- 第二行：把 areas 当作“市表” city 做内连接，区县的 pid 等于市的 aid
 inner join areas as city on city.aid = dis.pid
+-- 第三行：只保留市名称为“广州市”的行，从而得到广州市的所有区县
 where city.atitle = '广州市';
 ```
 
@@ -1659,7 +1813,8 @@ where city.atitle = '广州市';
 > 需求：查询身高大于平均身高的学生。拆成两步：①求平均身高；②查询大于该值的学生。用子查询一步完成：
 
 ```sql
--- 子查询 (select avg(height) from students) 返回一个数（一行一列），充当主查询的条件
+-- 子查询 (select avg(height) from students) 返回一个数（一行一列，平均身高），写在小括号里
+-- 它充当主查询 where 的条件：主查询返回 height 大于该平均值的学生（NULL 身高不满足）
 select * from students where height > (select avg(height) from students);
 ```
 
@@ -1668,7 +1823,8 @@ select * from students where height > (select avg(height) from students);
 > 需求：查询**还有学生在读**的所有班级的名字。拆成两步：①找出学生表中所有的班级 id；②找出班级表中对应的名字。
 
 ```sql
--- 子查询返回一列多行（所有出现过的 cls_id），主查询用 in 判断班级 id 是否在其中
+-- 子查询 (select cls_id from students) 返回一列多行（学生表中所有出现过的班级编号）
+-- 主查询用 in 判断班级 id 是否在这个列表中，返回这些班级的 name
 select name from classes where id in (select cls_id from students);
 ```
 
@@ -1680,7 +1836,10 @@ select name from classes where id in (select cls_id from students);
 
 ```sql
 -- 子查询返回一行两列 (最大身高, 最大年龄)，主查询用行元素 (height, age) 与它比较
+-- 第一行：主查询，查询 students 的所有列
 select * from students
+-- 第二行：(height, age) 是行元素；= 要求两个值同时与子查询的两列分别相等
+-- 子查询 select max(height), max(age) 返回一行两列：(185.00, 59)
 where (height, age) = (select max(height), max(age) from students);
 ```
 
@@ -1702,23 +1861,36 @@ where (height, age) = (select max(height), max(age) from students);
 > 查询的完整格式（看起来复杂，其实很简单，**实际使用中只是其中某些部分的组合，而不是全部**）：
 
 ```sql
--- [ ] 表示可选部分
+-- [ ] 表示可选部分，| 表示多选一，实际书写时不要写出方括号
+-- SELECT：必写；DISTINCT 可选，表示去重；select_expr 是要查询的列或表达式，多个用逗号分隔
 SELECT [DISTINCT] select_expr [, select_expr, ...]
+-- FROM：指定数据来源的表名 tb_name（可以是多表连接）
 [FROM tb_name]
+-- WHERE：对原始行过滤的条件
 [WHERE 条件判断]
+-- GROUP BY：按列名 col_name 或列的位置序号 position 分组，可指定 ASC 升序 / DESC 降序
 [GROUP BY {col_name | position} [ASC | DESC], ...]
+-- HAVING：对分组之后的结果过滤的条件
 [HAVING 条件判断]
+-- ORDER BY：按列名、表达式 expr 或位置序号排序，ASC 升序（默认）/ DESC 降序
 [ORDER BY {col_name | expr | position} [ASC | DESC], ...]
+-- LIMIT：截取行；offset 是起始偏移（从 0 开始），row_count 是取的行数；两种写法等价
 [LIMIT {[offset,] row_count | row_count OFFSET offset}];
 ```
 
 ```sql
--- 完整的 select 语句示例骨架
+-- 完整的 select 语句示例骨架（... 表示此处写具体内容）
+-- select distinct *：查询所有列并去重
 select distinct *
+-- from 表名：数据来源
 from 表名
+-- where：原始行的过滤条件
 where ....
+-- group by ... having ...：先分组，再对分组结果过滤
 group by ... having ...
+-- order by：排序规则
 order by ...
+-- limit start, count：从第 start 行开始取 count 行
 limit start, count
 ```
 
@@ -1762,24 +1934,34 @@ limit start, count
 ```sql
 -- 1) 定义视图：create view 视图名称 as select 语句;
 -- 例：把“学生姓名 + 班级名称”的连接查询定义为视图 v_stu_class
+-- 第一行：创建名为 v_stu_class 的视图，as 后面是定义视图内容的 select 语句
 create view v_stu_class as
+-- 第二行：选出学生 id、学生姓名（别名 sname）、班级名称（别名 cname）三列；别名即视图的列名
 select s.id as id, s.name as sname, c.name as cname
+-- 第三行：数据来源 students 表，别名 s
 from students as s
+-- 第四行：左连接 classes 表（别名 c），保留所有学生，连接条件为学生的 cls_id = 班级的 id
 left join classes as c on s.cls_id = c.id;
 
 -- 2) 查看视图：show tables 会把所有的视图也一起列出来
 show tables;
 -- 3) 使用视图：视图的用途就是查询，用法和普通表一样
+-- 查询视图的所有行和列（相当于重新执行了视图定义里的 select）
 select * from v_stu_class;
+-- 对视图再加条件过滤：只查班级名称为 python_01期 的学生
 select * from v_stu_class where cname = 'python_01期';
 -- 4) 修改视图：create or replace view 可以在视图已存在时直接替换定义
+-- 第一行：视图已存在则替换，不存在则创建
 create or replace view v_stu_class as
+-- 第二行：新定义比原来多了一列 age（学生年龄）
 select s.id as id, s.name as sname, s.age as age, c.name as cname
+-- 第三行：数据来源 students 表，别名 s
 from students as s
+-- 第四行：与原定义相同，左连接 classes 表
 left join classes as c on s.cls_id = c.id;
--- 5) 查看视图的创建语句
+-- 5) 查看视图的创建语句：可看到视图的完整定义
 show create view v_stu_class;
--- 6) 删除视图：drop view 视图名称;
+-- 6) 删除视图：drop view 视图名称;，只删除视图的定义，不影响基本表的数据
 drop view v_stu_class;
 ```
 
@@ -1828,13 +2010,16 @@ drop view v_stu_class;
 > 上述三个步骤的操作必须打包在**一个事务**中，任何一个步骤失败，则必须**回滚**所有的步骤。
 
 ```sql
--- 开始一个事务
+-- start transaction：开始一个事务，此后的修改先暂存，不会立刻写入物理表（等价于 begin;）
 start transaction;
 -- 步骤 1：检查支票账户余额（应该 >= 200）
+-- customer_id 是客户编号，10233276 是 Jane 的编号；程序根据返回的 balance 判断是否够转
 select balance from checking where customer_id = 10233276;
 -- 步骤 2：从支票账户扣 200
+-- set balance = balance - 200.00：新余额 = 原余额减 200（等号右边的 balance 是修改前的值）
 update checking set balance = balance - 200.00 where customer_id = 10233276;
 -- 步骤 3：给储蓄账户加 200
+-- 与步骤 2 对应，余额增加 200；两个 update 必须同时成功或同时失败
 update savings set balance = balance + 200.00 where customer_id = 10233276;
 -- 提交事务：所有修改持久保存；如果中间出错，应该执行 rollback; 撤销所有修改
 commit;
@@ -1856,9 +2041,9 @@ commit;
 > 可以查看表的创建语句，末尾能看到 `ENGINE=InnoDB`。
 
 ```sql
--- 选择数据库（讲义用的 jing_dong 库，可换成自己的库）
+-- use 库名：选择数据库（讲义用的 jing_dong 库，可换成自己的库）
 use jing_dong;
--- 查看 goods 表的创建语句，确认引擎是 InnoDB
+-- show create table 表名：查看 goods 表的创建语句，在末尾确认 ENGINE=InnoDB（InnoDB 才支持事务）
 show create table goods;
 ```
 
@@ -1875,8 +2060,10 @@ show create table goods;
 > 3. `create`、`drop`、`alter` 等 DDL 语句会**隐式提交**当前事务，所以不能回滚；不要在事务中混用
 
 ```sql
--- 查看自动提交是否开启：1 表示开启，0 表示关闭
+-- show variables like '名称'：查看服务器变量的当前值；like 后可以用 % 通配符
+-- 查看自动提交是否开启：Value 列为 ON（1）表示开启，OFF（0）表示关闭
 show variables like 'autocommit';
+-- set autocommit = 值：设置当前会话的自动提交开关（只对当前连接有效）
 -- 临时关闭当前会话的自动提交（此后需要手动 commit 才生效），0 关闭，1 开启
 set autocommit = 0;
 ```
@@ -1921,9 +2108,11 @@ set autocommit = 0;
 > - **幻读**：同一个事务里，两次按同样条件查询，因为别的事务**插入或删除并提交**了，行数不一样
 
 ```sql
--- 查看当前会话的隔离级别
+-- @@变量名：读取系统变量的值；transaction_isolation 是事务隔离级别变量（8.0 的名称）
+-- 查看当前会话的隔离级别（默认返回 REPEATABLE-READ）
 select @@transaction_isolation;
--- 设置当前会话的隔离级别为“读已提交”
+-- set session transaction isolation level 级别：设置隔离级别；session 表示仅对当前会话有效
+-- 设置当前会话的隔离级别为“读已提交”（READ COMMITTED），不会出现脏读
 set session transaction isolation level read committed;
 ```
 
@@ -1970,13 +2159,14 @@ set session transaction isolation level read committed;
 ### 22.4 索引的使用
 
 ```sql
--- 查看某张表上的所有索引
+-- show index from 表名：查看某张表上的所有索引（结果含索引名 Key_name、列名 Column_name 等）
 show index from 表名;
 -- 创建索引：create index 索引名称 on 表名(字段名称(长度))
+-- 索引名称：自定义；表名：在哪张表上建；字段名称：对哪一列建索引
 -- 如果指定字段是字符串，需要指定长度，建议长度与定义字段时的长度一致
 -- 如果字段类型不是字符串，可以不填写长度部分
 create index 索引名称 on 表名(字段名称(长度));
--- 删除索引
+-- 删除索引：drop index 索引名称 on 表名;，on 后指明索引所在的表
 drop index 索引名称 on 表名;
 ```
 
@@ -1992,51 +2182,62 @@ drop index 索引名称 on 表名;
 **① 创建测试表**
 
 ```sql
--- 创建只有一个字段的测试表
+-- 创建只有一个字段的测试表 test_index
+-- title：varchar(10) 变长字符串，最多 10 个字符；该表没有主键，也没有索引
 create table test_index(title varchar(10));
 ```
 
 **② 用 Python 向表中加入十万条数据**
 
 ```python
-from pymysql import connect  # 导入 connect 函数，用于创建数据库连接
+# 从第三方库 pymysql 中导入 connect 函数，用于创建数据库连接
+from pymysql import connect
 
 
+# 定义主函数 main，无参数、无返回值（None）
 def main():
     """向 test_index 表中插入 10 万条数据，用于对比索引前后的查询耗时。"""
-    # 创建 Connection 连接对象，参数含义见 1.5
+    # 创建 Connection 连接对象（类型 pymysql.connections.Connection），参数含义见 1.5
+    # host：服务器地址（str）；port：端口（int）；database：库名（str）
+    # user / password：账号与密码（str）；charset：字符集（str）
     conn = connect(host='localhost', port=3306, database='jing_dong',
                    user='root', password='mysql', charset='utf8')
-    # 获得 Cursor 对象
+    # 获得 Cursor（游标）对象，通过它执行 SQL
     cursor = conn.cursor()
-    # 插入 10 万次数据，i 从 0 到 99999
+    # 循环插入 10 万次数据：range(100000) 产生 0 到 99999 共 10 万个整数，i 为当前序号（int）
     for i in range(100000):
         # 每次插入 'ha-0'、'ha-1'、...、'ha-99999'
+        # %d 是整数占位符，% i 用 i 的值替换它；execute 返回受影响的行数（int），这里忽略
         cursor.execute("insert into test_index values('ha-%d')" % i)
-    # 提交数据：不提交的话插入不会生效
+    # 提交数据：insert 属于修改操作，不 commit 的话插入不会生效
     conn.commit()
-    cursor.close()  # 关闭游标
-    conn.close()  # 关闭连接
+    # 关闭游标，释放资源
+    cursor.close()
+    # 关闭连接，释放服务器端的连接资源
+    conn.close()
 
 
+# 判断当前文件是否被直接运行，是则执行下面的代码
 if __name__ == '__main__':
+    # 调用主函数，开始插入数据
     main()
 ```
 
 **③ 对比查询时间**
 
 ```sql
--- 开启运行时间监测（会话级别，记录每条语句的耗时；该功能在 8.0 中已标记为过时，但仍可用于学习）
+-- set profiling=1：开启运行时间监测（1 开启，0 关闭；会话级别，记录每条语句的耗时）
+-- 该功能在 8.0 中已标记为过时，但仍可用于学习
 set profiling=1;
 -- 查找最后一条数据 ha-99999（没有索引：需要全表扫描 10 万行）
 select * from test_index where title='ha-99999';
--- 查看语句执行的时间
+-- show profiles：查看已执行语句的编号 Query_ID、耗时 Duration（秒）和语句 Query
 show profiles;
--- 为表 test_index 的 title 列创建索引，长度 10 与字段定义一致
+-- 为表 test_index 的 title 列创建索引，索引名 title_index，长度 10 与字段定义一致
 create index title_index on test_index(title(10));
 -- 再次执行同样的查询（有索引：B+ 树快速定位）
 select * from test_index where title='ha-99999';
--- 再次查看执行时间，会发现有索引时耗时大幅下降
+-- 再次查看执行时间，对比两条 select 的 Duration，会发现有索引时耗时大幅下降
 show profiles;
 ```
 
@@ -2108,11 +2309,12 @@ show profiles;
 > - `authentication_string`：密码，**加密后的值**
 
 ```sql
--- 切换到系统库 mysql
+-- use 库名：切换到系统库 mysql（保存账户和权限信息）
 use mysql;
--- 查看 user 表的结构
+-- desc 表名：查看 user 表的结构（字段名、类型等）
 desc user;
 -- 查看所有用户：host（允许从哪里登录）、user（用户名）、authentication_string（加密后的密码）
+-- 每行对应一个账户，账户由“用户名 + 主机”共同唯一确定
 select host,user,authentication_string from user;
 ```
 
@@ -2138,8 +2340,10 @@ mysql> select host,user,authentication_string from user;
 
 ```sql
 -- 创建账户：create user '用户名'@'访问主机' identified by '密码';
+-- '用户名'@'访问主机'：账户标识（字符串）；identified by '密码'：设置该账户的登录密码
 create user '用户名'@'访问主机' identified by '密码';
 -- 授权：grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
+-- 权限列表：如 select、insert 等，多个用逗号分隔；数据库.表：授权范围，* 表示全部
 grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 ```
 
@@ -2155,31 +2359,34 @@ grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 
 ```bash
 # step1：使用 root 登录，回车后输入密码，再回车
+# -u root 指定用户名；-p 不带值，表示回车后提示输入密码
 $mysql -uroot -p
 ```
 
 ```sql
 -- step2：创建账户并授予权限（8.0 必须分两步：先 create user，再 grant）
--- 创建用户 laowang，只能从本机登录，密码 123
+-- 创建用户 laowang，只能从本机登录（localhost），密码 123
 create user 'laowang'@'localhost' identified by '123';
--- 授予 laowang 对 jing_dong 库所有表的 select（查询）权限
+-- 授予 laowang 对 jing_dong 库所有表（jing_dong.*）的 select（查询）权限
 grant select on jing_dong.* to 'laowang'@'localhost';
--- 查看 laowang 拥有哪些权限
+-- 查看 laowang 拥有哪些权限（结果为 GRANT ... 形式的授权语句）
 show grants for laowang@localhost;
--- step3：退出 root 的登录
+-- step3：退出 root 的登录，回到系统终端
 quit
 ```
 
 ```bash
 # step4：使用 laowang 账户登录，回车后输入密码；登录后只能查询 jing_dong 库
+# -ulaowang：-u 与用户名连写；-p：提示输入密码
 $mysql -ulaowang -p
 ```
 
 > **示例 2**：创建一个 `laoli` 的账号，密码为 `12345678`，**可以在任意电脑上连接访问**，并且对 `jing_dong` 数据库中的所有表拥有**所有权限**。
 
 ```sql
--- 先创建账户，再授权
+-- 先创建账户：'%' 表示允许从任意主机登录，密码为 12345678
 create user 'laoli'@'%' identified by '12345678';
+-- 再授权：all privileges 表示所有权限，jing_dong.* 表示 jing_dong 库的所有表
 grant all privileges on jing_dong.* to 'laoli'@'%';
 ```
 
@@ -2188,11 +2395,13 @@ grant all privileges on jing_dong.* to 'laoli'@'%';
 ### 23.4 修改权限、回收权限
 
 ```sql
--- 修改（追加）权限：在原有基础上给 账户@主机 追加权限；with grant option 表示该账户还可以把权限授予别人
+-- 修改（追加）权限：在原有基础上给 账户@主机 追加权限
+-- with grant option 是可选项，表示该账户还可以把自己的权限授予别人
 grant 权限名称 on 数据库 to 账户@主机 with grant option;
--- 举例：给 laowang 追加 jing_dong 库的 insert、update 权限
+-- 举例：给 laowang 追加 jing_dong 库的 insert（插入）、update（修改）权限
 grant insert,update on jing_dong.* to 'laowang'@'localhost';
--- 回收权限（补充）：revoke 权限 on 数据库 from 账户@主机
+-- 回收权限（补充）：revoke 权限 on 数据库 from 账户@主机；注意回收用 from，授权用 to
+-- 这里回收 laowang 在 jing_dong 库上的 insert、update 权限
 revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 ```
 
@@ -2203,9 +2412,10 @@ revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 > 使用 `root` 登录后修改。使用 `alter user` 语句修改（8.0 已删除 `password()` 函数，不能再直接修改 `mysql.user` 表来改密码）。
 
 ```sql
--- 修改用户的密码：alter user '用户名'@'主机' identified by '新密码';
+-- alter user '用户名'@'主机' identified by '新密码'：修改指定账户的密码
+-- 这里把 laowang@localhost 的密码改为 luke123
 alter user 'laowang'@'localhost' identified by 'luke123';
--- 刷新权限，使修改立即生效
+-- flush privileges：重新加载权限表，使修改立即生效
 flush privileges;
 ```
 
@@ -2218,10 +2428,13 @@ flush privileges;
 > 如果要在一台 Ubuntu 中使用 `mysql` 命令远程连接另外一台 MySQL 服务器：
 
 ```bash
+# vim：文本编辑器，参数是要编辑的配置文件路径
 # 修改 MySQL 服务端的配置文件，把 bind-address 改为 0.0.0.0（或注释掉）
 $vim /etc/mysql/mysql.conf.d/mysqld.cnf
+# service 服务名 动作：mysql 是服务名，restart 表示重启，使配置生效
 # 重启 MySQL 服务
 $service mysql restart
+# -h 指定服务器 IP（要替换成真实地址）；-uroot 用户名；-p 提示输入密码
 # 在另外一台机器上用 -h 指定服务器 IP 进行连接测试
 $mysql -h 服务器IP -uroot -p
 ```
@@ -2238,18 +2451,18 @@ $mysql -h 服务器IP -uroot -p
 > 如果账号不允许从远程登录，只能在 `localhost`，这时只要在 `localhost` 那台电脑登录 MySQL 后，更改 `mysql` 数据库里 `user` 表的 `host` 项，从 `localhost` 改成 `%`。
 
 ```bash
-# 登录 MySQL
+# 登录 MySQL：-u 指定用户名，-p 提示输入密码
 $mysql -u root -p
 ```
 
 ```sql
--- 切换到系统库
+-- use 库名：切换到系统库 mysql
 use mysql;
--- 把 root 允许登录的主机改为 %（任意主机）
+-- update 表 set 列=值 where 条件：把 user 表中 root 账户的 host 改为 %（任意主机）
 update user set host = '%' where user = 'root';
--- 查看修改结果
+-- 查看修改结果：host 一列应变为 %
 select host, user from user;
--- 操作结束之后必须刷新权限
+-- 操作结束之后必须刷新权限，因为直接改了系统表，不刷新不会生效
 flush privileges;
 ```
 
@@ -2257,10 +2470,12 @@ flush privileges;
 
 ```sql
 -- 语法 1（推荐）：使用 root 登录，drop user '用户名'@'主机';
+-- 主机要与创建时一致，这里删除的是 laowang@'%' 这个账户
 drop user 'laowang'@'%';
 -- 语法 2：直接删除 mysql 数据库的 user 表中的数据（语法 1 失败时才采用）
+-- delete from 表 where 条件：删除 user 列为 laowang 的行
 delete from user where user='laowang';
--- 操作结束之后必须刷新权限
+-- 操作结束之后必须刷新权限，直接改系统表后不刷新不会生效
 flush privileges;
 ```
 
@@ -2338,11 +2553,12 @@ flush privileges;
 **在主服务器 Ubuntu 上备份：**
 
 ```bash
-# mysqldump：导出数据库为 SQL 文件
+# mysqldump：MySQL 自带的备份工具，把数据库导出为 SQL 文件
 # -u：用户名；-p：后面直接写密码（这里是 mysql，-p 与密码之间不能有空格）
 # --all-databases：导出所有数据库
 # --lock-all-tables：执行备份时锁住所有表，防止备份过程中有数据被修改，保证数据一致
-# > ~/master_db.sql：把导出的内容保存到 ~/master_db.sql 文件（位置可自己指定）
+# >：输出重定向，把导出的内容保存到后面的文件
+# ~/master_db.sql：保存位置，~ 表示当前用户的家目录（位置可自己指定）
 $mysqldump -uroot -pmysql --all-databases --lock-all-tables > ~/master_db.sql
 ```
 
@@ -2353,7 +2569,9 @@ $mysqldump -uroot -pmysql --all-databases --lock-all-tables > ~/master_db.sql
 > 3. 在命令窗口中执行还原操作：
 
 ```bash
-# 在 Windows 命令窗口中执行：-u 用户名，-p 密码，< 表示从 master_db.sql 文件读入并执行
+# 在 Windows 命令窗口中执行：mysql 是命令行客户端
+# -uroot：用户名 root；-pmysql：密码 mysql（-p 与密码之间不能有空格）
+# <：输入重定向，表示从 master_db.sql 文件读入内容并执行，从而还原所有库
 $mysql -uroot -pmysql < master_db.sql
 ```
 
@@ -2364,11 +2582,13 @@ $mysql -uroot -pmysql < master_db.sql
 **① 编辑配置文件，设置 `log_bin` 和 `server-id`**
 
 ```bash
+# vim 文件路径：用 vim 编辑器打开配置文件；sudo 提供修改该文件所需的管理员权限
 # 编辑 MySQL 服务端配置文件
 $sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
 ```
 
 ```
+# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端
 [mysqld]
 # 服务器的唯一 ID，主服务器设为 1（整数，主从各不相同）
 server-id = 1
@@ -2390,6 +2610,7 @@ binlog_ignore_db = mysql
 **② 重启 MySQL 服务**
 
 ```bash
+# service 服务名 动作：mysql 是服务名，restart 表示重启
 # 修改配置后必须重启才能生效
 $sudo service mysql restart
 ```
@@ -2397,16 +2618,17 @@ $sudo service mysql restart
 **③ 登录主服务器的 MySQL，创建用于同步数据的账号**
 
 ```bash
-# 登录主服务器的 MySQL
+# 登录主服务器的 MySQL：-uroot 用户名 root；-pmysql 密码 mysql（-p 与密码之间不能有空格）
 $mysql -uroot -pmysql
 ```
 
 ```sql
 -- 创建复制专用账号 slave，密码 123；@'%' 表示允许从任意主机（也就是从服务器）登录
 create user 'slave'@'%' identified by '123';
--- 授予“复制从库”权限：复制需要的是 replication slave 权限，*.* 表示所有库所有表
+-- 授予“复制从库”权限：复制需要的是 replication slave 权限
+-- *.* 表示所有库的所有表（该权限是全局权限，只能这样写）
 grant replication slave on *.* to 'slave'@'%';
--- 刷新权限
+-- flush privileges：重新加载权限表，使授权立即生效
 flush privileges;
 ```
 
@@ -2415,7 +2637,8 @@ flush privileges;
 **④ 获取主服务器的二进制日志信息**
 
 ```sql
--- 查看主服务器当前使用的二进制日志文件和位置（8.0.22+ 也可用 show binary log status;）
+-- show master status：查看主服务器当前使用的二进制日志文件和位置
+-- 结果含 File（日志文件名）、Position（当前位置，整数）等列；8.0.22+ 也可用 show binary log status;
 show master status;
 ```
 
@@ -2431,8 +2654,9 @@ show master status;
 **① 找到 Windows 中 MySQL 的配置文件 `my.ini`，将 `server-id` 修改为 2，保存退出**
 
 ```
+# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端
 [mysqld]
-# 从服务器的唯一 ID，必须与主服务器不同
+# 从服务器的唯一 ID（整数），必须与主服务器不同（主服务器是 1）
 server-id = 2
 ```
 
@@ -2446,16 +2670,17 @@ server-id = 2
 
 ```sql
 -- change master to：告诉从服务器要从哪个主服务器、哪个日志文件的哪个位置开始同步
+-- 各项之间用逗号分隔，最后一项以分号结束
 change master to
-    -- 主服务器 Ubuntu 的 IP 地址
+    -- master_host：主服务器 Ubuntu 的 IP 地址（字符串，按实际环境替换）
     master_host = '10.211.55.5',
-    -- 主服务器上创建的复制账号
+    -- master_user：主服务器上创建的复制账号（字符串）
     master_user = 'slave',
-    -- 复制账号的密码
+    -- master_password：复制账号的密码（字符串）
     master_password = '123',
-    -- 前面 show master status 查到的日志文件名
+    -- master_log_file：前面 show master status 查到的日志文件名（字符串，File 列）
     master_log_file = 'mysql-bin.000006',
-    -- 前面 show master status 查到的日志位置
+    -- master_log_pos：前面 show master status 查到的日志位置（整数，Position 列），最后一项以分号结束
     master_log_pos = 590;
 ```
 
@@ -2464,9 +2689,10 @@ change master to
 **④ 开启同步，查看同步状态**
 
 ```sql
--- 开启主从同步线程（关闭同步用 stop slave;）
+-- start slave：开启主从同步线程（IO 线程和 SQL 线程），关闭同步用 stop slave;
 start slave;
--- 查看同步状态：\G 让结果竖着显示，更易阅读
+-- show slave status：查看同步状态；\G 代替分号，让结果竖着显示（每个字段一行），更易阅读
+-- 注意 \G 后面不要再加分号
 show slave status\G
 ```
 
@@ -2480,12 +2706,14 @@ show slave status\G
 #### 24.4.4 测试主从同步
 
 ```sql
--- 在 Ubuntu 的 MySQL（主服务器）中创建一个数据库
+-- 在 Ubuntu 的 MySQL（主服务器）中创建一个数据库：写操作会记入 binlog 并同步给从服务器
+-- charset=utf8 指定字符集
 create database test_sync charset=utf8;
 ```
 
 ```sql
--- 在 Windows 的 MySQL（从服务器）中查看，如果能看到 test_sync，说明主从同步成功
+-- 在 Windows 的 MySQL（从服务器）中查看所有数据库
+-- 如果结果中能看到 test_sync，说明主从同步成功
 show databases;
 ```
 
@@ -2540,19 +2768,25 @@ show databases;
 ### 25.2 Shell 命令速查
 
 ```bash
-# 启动 / 停止 / 重启 / 查看 MySQL 服务状态
+# service 服务名 动作：mysql 是服务名，start 启动服务
 $sudo service mysql start
+# stop 动作：停止服务
 $sudo service mysql stop
+# restart 动作：重启服务（修改配置文件后使用）
 $sudo service mysql restart
+# status 动作：查看服务状态（active (running) 表示运行中）
 $sudo service mysql status
 
-# 登录 MySQL；-u 用户名，-p 提示输入密码，-h 主机，-P 端口
+# 登录 MySQL：-u 用户名，-p 不带值，回车后提示输入密码
 $mysql -u root -p
+# -h 主机地址（127.0.0.1 为本机），-P（大写）端口（默认 3306），-u 用户名，-p 提示输入密码
 $mysql -h 127.0.0.1 -P 3306 -u root -p
 
+# mysqldump 备份工具：-uroot 用户名，-p 提示输入密码，库名 为要备份的库，> 重定向保存到文件
 # 备份数据库为 SQL 文件
 $mysqldump -uroot -p 库名 > 库名.sql
 
+# mysql 客户端：库名 为已存在的目标库，< 输入重定向，把 SQL 文件的内容当作要执行的语句
 # 把 SQL 文件还原到已存在的数据库中
 $mysql -uroot -p 库名 < 库名.sql
 ```
