@@ -740,15 +740,21 @@ create table students(
 
 | 操作 | 语法 | 说明 |
 | --- | --- | --- |
-| 添加字段 | `alter table 表名 add 列名 类型;` | 在表的**最后**添加一个字段 |
-| 修改字段（可重命名） | `alter table 表名 change 原名 新名 类型及约束;` | 可同时改列名和类型约束。语法里有“原名”“新名”两个位置，**必须都填**；只想改类型、不想改名时，新名照样写成原来的列名（如 `change name name varchar(30)`）。会整体替换列定义，类型及 `not null`、`default`、`auto_increment` 等约束要写完整，否则这些约束会丢失（`primary key`、`unique` 不受影响） |
-| 修改字段（不重命名） | `alter table 表名 modify 列名 类型及约束;` | 只改类型和约束，列名只写一次。同样会整体替换列定义，`not null`、`default`、`auto_increment` 等约束要写完整，否则会丢失（`primary key`、`unique` 不受影响） |
-| 删除字段 | `alter table 表名 drop 列名;` | 删除该字段及其所有数据 |
+| 添加字段 | `alter table 表名 add [column] 列名 类型 [约束和列属性...] [first \| after 已有列名];` | 默认在表的**最后**添加一个字段；约束和列属性（`not null`、`unique`、`default`、`comment` 等）可选，不写则允许 `NULL` 且无默认值；`first` 放在最前，`after 列名` 放在指定列之后 |
+| 修改字段（可重命名） | `alter table 表名 change [column] 原名 新名 列定义 [first \| after 列名];` | 可同时改列名和列定义。语法里有“原名”“新名”两个位置，**必须都填**；只想改类型、不想改名时，新名照样写成原来的列名（如 `change name name varchar(30)`）。会整体替换列定义，类型以及 `not null`、`default`、`auto_increment`、`comment` 等约束和列属性要写完整，否则会丢失；`first`/`after` 可同时调整列位置。已有的 `primary key`、`unique` 不受影响，**不要重复写**，否则会报错或多建一个重复索引 |
+| 修改字段（不重命名） | `alter table 表名 modify [column] 列名 列定义 [first \| after 列名];` | 只改列定义，列名只写一次，不能改名。同样会整体替换列定义，`not null`、`default`、`auto_increment`、`comment` 等约束和列属性要写完整，否则会丢失（已有的 `primary key`、`unique` 不受影响，不要重复写）；`first`/`after` 可同时调整列位置 |
+| 删除字段 | `alter table 表名 drop [column] 列名;` | 删除该字段及其所有数据；`column` 可省略；该列所在的索引会自动去掉该列（索引只含这一列时整个索引被删除）；若该列有外键约束，需先 `drop foreign key 约束名`，否则报错；不能删除表的最后一列（需改用 `drop table`） |
+
+> 说明：`列定义` 指 `类型 [not null \| null] [default 值] [auto_increment] [unique] [primary key] [comment '说明']` 等。其中 `not null`、`unique`、`primary key` 是约束，`default`、`auto_increment`、`comment` 是列属性。
 
 ```sql
 -- 添加字段：alter table 表名 add 列名 类型;
 -- 给 students 增加 birthday（生日，datetime 日期时间类型），新字段加在表的最后
 alter table students add birthday datetime;
+-- 带约束和位置的写法：添加 phone（手机号，varchar(20)），not null 不允许为空，default '' 默认空串，comment 为字段注释，after name 表示放在 name 列之后
+alter table students add phone varchar(20) not null default '' comment '手机号' after name;
+-- 删除上面演示用的 phone 字段，避免影响后续示例
+alter table students drop phone;
 -- 修改字段（重命名版）：alter table 表名 change 原名 新名 类型及约束;
 -- 把 birthday 改名为 birth，同时设置为 datetime 且 not null 不允许为空
 -- （建议在空表或没有 NULL 数据时执行，否则非严格模式下旧数据会被转成零值，严格模式下会报错）
