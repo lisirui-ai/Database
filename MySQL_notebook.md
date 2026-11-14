@@ -1234,6 +1234,8 @@ select * from students where id between 3 and 8;
 select * from students where id between 3 and 8 and gender=1;
 ```
 
+> **注意**：`between 值1 and 值2` 中的 `and` 是 `between` 语法的一部分，不是逻辑运算符；`between ... and` 的优先级高于逻辑运算符 `and`，所以例 12 先计算 `id between 3 and 8`，再与 `gender=1` 做逻辑 `and`，相当于 `(id between 3 and 8) and gender=1`。
+
 ### 9.5 空判断
 
 > **注意**：`NULL` 与 `''`（空字符串）是**不同的**！`NULL` 表示“未知 / 没有值”，`''` 是一个长度为 0 的字符串。
@@ -1257,7 +1259,7 @@ select * from students where height is not null and gender=1;
 
 ### 9.6 运算优先级
 
-> 优先级由高到低依次为：**小括号 → `not` → 比较运算符 → 逻辑运算符**。
+> 优先级由高到低依次为：**小括号 → 比较运算符（`=`、`>`、`like`、`in`、`is null` 等） → `between ... and` → `not` → `and` → `or`**。
 >
 > 在逻辑运算符中，**`and` 比 `or` 先运算**。如果同时出现，并希望先算 `or`，需要结合小括号 `()` 使用。
 
