@@ -1106,13 +1106,22 @@ select name from students;
 -- 结果集的列标题变为 序号、名字、性别
 select id as 序号, name as 名字, gender as 性别 from students;
 
--- 如果是单表查询，列名前可以省略表名，直接写列名
+-- 只查一张表时，列名前可以省略表名，直接写列名
 select id, name, gender from students;
--- 也可以用 表名.字段名 的形式（多表查询时用来区分同名字段）
+-- 也可以写成 表名.列名；单表查询时与上一条结果相同，这种写法主要用于多表查询（见下文说明）
 select students.id, students.name, students.gender from students;
 -- 通过 as 给表起别名：from 表名 as 别名；之后用别名 s 引用该表，写起来更简短
 select s.id, s.name, s.gender from students as s;
+
+-- 多表查询：students 和 classes 通过 inner join 连接，on 指定两表的对应关系（连接的用法详见第十五章，这里只关注列名怎么写）
+-- students 和 classes 都有 name 列，只写 name 会报错：Column 'name' in field list is ambiguous（列有歧义）
+-- 必须写成 表名.列名，指明 name 来自哪张表：students.name 是学生姓名，classes.name 是班级名称
+select students.name, classes.name from students inner join classes on students.cls_id = classes.id;
+-- 表名较长时，可以像上面一样起别名，用 别名.列名：s.name 是学生姓名，c.name 是班级名称
+select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id;
 ```
+
+> **为什么要写表名或别名**：查询涉及多张表时（详见第十五章“连接查询”），如果不同的表有同名的列（如 `students.name` 和 `classes.name`），只写 `name` 会因为有歧义而报错，必须用 `表名.列名` 或 `别名.列名` 指明来自哪张表。单表查询没有这个问题，所以可以省略。
 
 ### 8.3 消除重复行（`distinct`）
 
