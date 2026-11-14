@@ -592,11 +592,11 @@ $sudo ss -lntp | grep 3306
 | --- | --- | --- | --- |
 | `DATE` | 3 | `'2020-01-01'` | 日期，范围 `1000-01-01 ~ 9999-12-31` |
 | `TIME` | 3 | `'12:29:59'` | 时间 |
-| `DATETIME` | 8 | `'2020-01-01 12:29:59'` | 日期 + 时间，范围 `1000-01-01 00:00:00 ~ 9999-12-31 23:59:59` |
+| `DATETIME` | 5~8 | `'2020-01-01 12:29:59'` | 日期 + 时间，范围 `1000-01-01 00:00:00 ~ 9999-12-31 23:59:59` |
 | `YEAR` | 1 | `'2017'` | 年份 |
 | `TIMESTAMP` | 4 | `'1970-01-01 00:00:01'` | 时间戳，范围 `1970-01-01 00:00:01 UTC ~ 2038-01-19 03:14:07 UTC`，可用于**自动记录** insert、update 操作的时间 |
 
-> **说明**：讲义中 `DATE` 写的是 4 字节，实际为 **3 字节**。`DATETIME` 在 5.6.4 以后占 5~8 字节（含小数秒时更多），讲义按 8 字节记。
+> **说明**：讲义中 `DATE` 写的是 4 字节，实际为 **3 字节**。`DATETIME` 在 5.6.4 以后占 5~8 字节（含小数秒时更多），讲义按 8 字节记，这里写实际范围。
 >
 > `TIMESTAMP` 受**时区**影响（存储 UTC、读取时按会话时区转换），且只到 2038 年；`DATETIME` 不受时区影响。
 >
@@ -627,16 +627,18 @@ gender enum('男','女','中性','保密')
 -- insert into students(gender) values(2);
 ```
 
-### 4.2 约束
+### 4.2 约束与列属性
 
-| 约束 | 关键字 | 说明 |
+> 其中 `primary key`、`not null`、`unique`、`foreign key` 是**约束**（限制能写入什么数据）；`default`、`auto_increment` 是**列属性**（描述列的默认行为，不限制数据合法性）。
+
+| 约束 / 列属性 | 关键字 | 说明 |
 | --- | --- | --- |
 | 主键 | `primary key` | 唯一标识一行数据，**不能重复且不能为空**；InnoDB 中数据按主键顺序**物理存储**（聚集索引）；一张表只能有一个主键 |
 | 非空 | `not null` | 此字段不允许填写空值（`NULL`） |
 | 唯一 | `unique` | 此字段的值不允许重复（允许有多个 `NULL`） |
-| 默认 | `default` | 当不填写此值时会使用默认值；如果填写，以填写的为准 |
+| 默认（列属性） | `default` | 当不填写此值时会使用默认值；如果填写，以填写的为准 |
 | 外键 | `foreign key` | 对**关系字段**进行约束：为关系字段填值时，会到关联的表中查询此值是否存在，存在则填写成功，不存在则填写失败并抛出异常 |
-| 自增 | `auto_increment` | 整数字段自动增长，通常和主键搭配；插入时不用填写 |
+| 自增（列属性） | `auto_increment` | 整数字段自动增长，通常和主键搭配；插入时不用填写 |
 
 > **关于外键的说明**：虽然外键约束可以保证数据的有效性，但在进行数据的 CRUD 时，都会**降低数据库的性能**（每次都要检查关联表），所以**实际开发中通常不推荐使用外键**。那么数据的有效性怎么保证呢？**可以在逻辑层（程序代码）中进行控制**。外键的语法见 [7.4](#74-外键的使用)。
 
@@ -649,15 +651,15 @@ gender enum('男','女','中性','保密')
 ```sql
 -- show databases：列出当前服务器上的所有数据库（结果为一列 Database，每行一个库名）
 show databases;
--- use 数据库名：切换到某个数据库，之后的建表、查询等操作都针对它；库必须已存在
-use test_db;
--- database()：内置函数，返回当前正在使用的数据库名（字符串），如果没有选择则返回 NULL
-select database();
 -- create database 数据库名 charset=字符集：创建数据库
 -- charset=utf8 指定字符集；utf8 在 MySQL 中最多支持 3 字节字符，如果要存 emoji 表情，应使用 utf8mb4
 create database test_db charset=utf8;
 -- show create database 数据库名：查看数据库的创建语句（可看到字符集等信息）
 show create database test_db;
+-- use 数据库名：切换到某个数据库，之后的建表、查询等操作都针对它；库必须已存在
+use test_db;
+-- database()：内置函数，返回当前正在使用的数据库名（字符串），如果没有选择则返回 NULL
+select database();
 -- drop database 数据库名：删除数据库（会连同库里所有表和数据一起删除，且无法恢复，慎用）
 drop database test_db;
 ```
@@ -754,11 +756,11 @@ alter table students add birthday datetime;
 alter table students add phone varchar(20) not null default '' comment '手机号' after name;
 -- 删除上面演示用的 phone 字段，避免影响后续示例
 alter table students drop phone;
--- 修改字段（重命名版）：alter table 表名 change 原名 新名 类型及约束;
+-- 修改字段（重命名版）：alter table 表名 change 原名 新名 列定义;
 -- 把 birthday 改名为 birth，同时设置为 datetime 且 not null 不允许为空
 -- （建议在空表或没有 NULL 数据时执行，否则非严格模式下旧数据会被转成零值，严格模式下会报错）
 alter table students change birthday birth datetime not null;
--- 修改字段（不重命名版）：alter table 表名 modify 列名 类型及约束;
+-- 修改字段（不重命名版）：alter table 表名 modify 列名 列定义;
 -- 只修改 birth 的类型为 date（只存日期），仍然不允许为空；列名只写一次
 alter table students modify birth date not null;
 -- 删除字段：alter table 表名 drop 列名;
@@ -873,18 +875,18 @@ update students set age=21,height=170.50 where id=1;
 delete from students where id=5;
 ```
 
-> **逻辑删除**：对于重要数据，不希望物理删除（一旦删除就无法找回）。方案是给表加一个标记列（如 `isdelete`，类型 `bit`，默认 0），“删除”时只是把它**改为 1**，查询时只查 `isdelete=0` 的数据。**本质就是一个 update 操作**。
+> **逻辑删除**：对于重要数据，不希望物理删除（一旦删除就无法找回）。方案是给表加一个标记列（如 `is_delete`，类型 `bit`，默认 0），“删除”时只是把它**改为 1**，查询时只查 `is_delete=0` 的数据。**本质就是一个 update 操作**。
 >
 > 数据是否重要，要根据实际开发决定；不重要的数据可以直接物理删除。
 
 ```sql
 -- alter table 表名 add 列名 类型：给 students 增加逻辑删除标记列
 -- bit 是位类型（只存 0 或 1）；default 0 表示默认 0，即“未删除”
-alter table students add isdelete bit default 0;
+alter table students add is_delete bit default 0;
 -- 逻辑删除：本质是 update，把 id 为 1 的学生标记为已删除（数据仍留在表中）
-update students set isdelete=1 where id=1;
--- 查询时加 where isdelete=0，只查没被删除的数据，被标记的行就“看不见”了
-select * from students where isdelete=0;
+update students set is_delete=1 where id=1;
+-- 查询时加 where is_delete=0，只查没被删除的数据，被标记的行就“看不见”了
+select * from students where is_delete=0;
 ```
 
 ### 6.5 备份与恢复
@@ -1024,6 +1026,7 @@ create table user_detail(
 
 ```sql
 -- 一对多示例：班级表（“一”的一方）
+-- 注意：前面章节已创建过同名的 classes、students 表，重新执行前需先 drop table 删除旧表
 create table classes(
     -- id：班级编号，无符号整型，自增主键，会被学生表引用
     id int unsigned primary key auto_increment,
@@ -1070,9 +1073,9 @@ create table student_course(
 -- 注意：两个字段的类型必须一致（这里都是 int unsigned），被引用的字段必须是主键或有索引，表引擎需要是 InnoDB
 -- 如果表中已有数据，已有的 cls_id 必须都能在 classes.id 中找到，否则添加失败
 alter table students add foreign key (cls_id) references classes(id);
--- 插入一个学生：列依次是 name（姓名）、birth（生日）、cls_id（班级编号，外键列）
+-- 插入一个学生：列依次是 name（姓名）、cls_id（班级编号，外键列）
 -- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
-insert into students(name,birth,cls_id) values('张三','2020-1-9',1);
+insert into students(name,cls_id) values('张三',1);
 ```
 
 > **提醒**：外键会拦截不合法的数据，但也有代价：删除或修改被引用的班级时，如果还有学生引用它，也会失败（需先处理学生）。这是外键“降低性能、增加耦合”的体现，所以实际开发中多由程序逻辑层保证。
@@ -1080,6 +1083,8 @@ insert into students(name,birth,cls_id) values('张三','2020-1-9',1);
 ---
 
 ## 八、基础查询
+
+> 本章起的查询示例（自关联一章另用 `areas` 表除外）统一使用学生表 `students`（列：`id`、`name`、`age`、`height`、`gender`、`cls_id`、`is_delete`）和班级表 `classes`（列：`id`、`name`），其中 `cls_id` 对应 `classes.id`，`is_delete` 为逻辑删除标记（0 未删除，1 已删除）。示例只演示写法，不涉及具体数据。
 
 ### 8.1 查询所有字段与指定字段
 
@@ -1448,14 +1453,14 @@ select gender, group_concat(age) from students group by gender with rollup;
 
 ```sql
 -- 按班级分组，在每个班级内按年龄从大到小排名：
--- rank1：rank() 排名；dense_rank：dense_rank() 排名；row_num：row_number() 行号
+-- rank1：rank() 排名；dense1：dense_rank() 排名；row_num：row_number() 行号（别名不能直接叫 rank、dense_rank，它们是 8.0 的保留字）
 -- 第一行：* 保留原表所有列，后面追加三个计算列（窗口函数不合并行，结果行数与原表相同）
 select *,
     -- over (...) 定义窗口：partition by cls_id 按班级分窗口，order by age desc 窗口内按年龄降序
     -- rank()：并列排名，并列后跳号（1,2,2,4）
     rank() over (partition by cls_id order by age desc) as rank1,
     -- dense_rank()：密集排名，并列后不跳号（1,2,2,3）
-    dense_rank() over (partition by cls_id order by age desc) as dense_rank,
+    dense_rank() over (partition by cls_id order by age desc) as dense1,
     -- row_number()：行号，不并列，依次编号（1,2,3,4）
     row_number() over (partition by cls_id order by age desc) as row_num
 -- 数据来源：students 表
@@ -1467,7 +1472,7 @@ select *,
     -- 全体学生的 rank() 排名
     rank() over (order by age desc) as rank1,
     -- 全体学生的 dense_rank() 排名
-    dense_rank() over (order by age desc) as dense_rank,
+    dense_rank() over (order by age desc) as dense1,
     -- 全体学生的 row_number() 行号
     row_number() over (order by age desc) as row_num
 -- 数据来源：students 表
@@ -2096,7 +2101,7 @@ show profiles;
 > - **哈希索引**：通过哈希函数定位，适合等值查询，不支持范围查询（`Memory` 引擎使用；InnoDB 有自适应哈希索引，由系统自动管理）
 > - **B 树 / B+ 树索引**：默认创建的索引就是 **B+ 树索引**
 > - **聚集索引与非聚集索引**：
->   - **聚集索引**：索引和数据**存放在一起**，叶子节点就是数据行本身；InnoDB 的**主键索引**就是聚集索引，所以数据按主键顺序物理存储（对应约束表里“主键：物理上存储的顺序”）
+>   - **聚集索引**：索引和数据**存放在一起**，叶子节点就是数据行本身；InnoDB 的**主键索引**就是聚集索引，所以数据按主键顺序物理存储（对应 4.2 约束表中主键的说明）
 >   - **非聚集（二级）索引**：叶子节点存的是**主键值**，查询时先查到主键，再回到聚集索引查完整数据（**回表**）
 >
 > 详细资料：[聚集索引和非聚集索引](https://blog.csdn.net/hollis_chuang/article/details/102908445)。
@@ -2168,18 +2173,6 @@ desc user;
 select host,user,authentication_string from user;
 ```
 
-```
-mysql> select host,user,authentication_string from user;
-+-----------+------------------+-------------------------------------------+
-| host      | user             | authentication_string                     |
-+-----------+------------------+-------------------------------------------+
-| localhost | root             | *E74858DB86EBA20BC33D0AECAE8A8108C56B17FA |
-| localhost | mysql.sys        | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
-| localhost | debian-sys-maint | *EFED9C764966EDB33BB7318E1CBD122C0DFE4827 |
-+-----------+------------------+-------------------------------------------+
-3 rows in set (0.00 sec)
-```
-
 ### 22.3 创建账户并授权
 
 > 需要使用**实例级账户**登录后操作，以 `root` 为例。
@@ -2215,8 +2208,8 @@ $mysql -uroot -p
 
 ```sql
 -- step2：创建账户并授予权限（8.0 必须分两步：先 create user，再 grant）
--- 创建用户 laowang，只能从本机登录（localhost），密码 123
-create user 'laowang'@'localhost' identified by '123';
+-- 创建用户 laowang，只能从本机登录（localhost），密码 123456
+create user 'laowang'@'localhost' identified by '123456';
 -- 授予 laowang 对 jing_dong 库所有表（jing_dong.*）的 select（查询）权限
 grant select on jing_dong.* to 'laowang'@'localhost';
 -- 查看 laowang 拥有哪些权限（结果为 GRANT ... 形式的授权语句）
@@ -2320,9 +2313,8 @@ flush privileges;
 
 ```sql
 -- 语法 1（推荐）：使用 root 登录，drop user '用户名'@'主机';
--- 主机部分必须与账户创建时一致，否则会报错账户不存在；这里删除的是 laowang@'%' 这个账户
--- （注意：前文示例创建的是 laowang@'localhost'，实际删除它应写 'laowang'@'localhost'）
-drop user 'laowang'@'%';
+-- 主机部分必须与账户创建时一致，否则会报错账户不存在；前文创建的是 laowang@'localhost'，所以这里也写 localhost
+drop user 'laowang'@'localhost';
 -- 语法 2：直接删除 mysql 数据库的 user 表中的数据（语法 1 失败时才采用）
 -- delete from 表 where 条件：删除 user 列为 laowang 的行
 delete from user where user='laowang';
@@ -2475,7 +2467,8 @@ $mysql -uroot -pmysql
 
 ```sql
 -- 创建复制专用账号 slave，密码 123；@'%' 表示允许从任意主机（也就是从服务器）登录
-create user 'slave'@'%' identified by '123';
+-- 8.0 默认的 caching_sha2_password 认证方式要求复制连接使用 SSL 或 RSA 公钥，学习环境可改用 mysql_native_password
+create user 'slave'@'%' identified with mysql_native_password by '123';
 -- 授予“复制从库”权限：复制需要的是 replication slave 权限
 -- *.* 表示所有库的所有表（该权限是全局权限，只能这样写）
 grant replication slave on *.* to 'slave'@'%';
@@ -2515,7 +2508,7 @@ server-id = 2
 
 **② 重启 MySQL 服务**
 
-> 在开始菜单中输入 `services.msc`，打开 Windows 服务管理，找到 `MySQL57`（或对应版本的服务名），**重启**该服务。
+> 在开始菜单中输入 `services.msc`，打开 Windows 服务管理，找到 `MySQL80`（服务名与安装的版本有关），**重启**该服务。
 
 **③ 进入 Windows 的 MySQL，设置连接到主服务器**
 
