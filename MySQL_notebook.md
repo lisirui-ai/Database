@@ -28,24 +28,23 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 | 五   | 数据库与数据表操作（DDL）：库的创建/删除、表的创建/修改/删除、查看表结构 |
 | 六   | 数据增删改（DML）：insert、update、delete、逻辑删除、备份与恢复 |
 | 七   | 数据库设计：三范式、E-R 模型、三种对应关系与外键 |
-| 八   | 查询准备：测试库、测试表与测试数据 |
-| 九   | 基础查询：查询列、别名、去重 |
-| 十   | 条件查询：比较运算符、逻辑运算符、模糊查询、范围查询、空判断、优先级 |
-| 十一  | 排序：order by、asc/desc、多列排序 |
-| 十二  | 聚合函数：count、max、min、sum、avg |
-| 十三  | 分组：group by、group_concat、having、with rollup |
-| 十四  | 窗口函数（8.0 新增）：rank、dense_rank、row_number |
-| 十五  | 分页：limit、总页数与第 n 页的计算 |
-| 十六  | 连接查询：内连接、左连接、右连接 |
-| 十七  | 自关联：省市区数据的单表设计 |
-| 十八  | 子查询：标量、列、行子查询 |
-| 十九  | SELECT 完整语法与执行顺序 |
-| 二十  | 视图：定义、使用、删除与作用 |
-| 二十一 | 事务：ACID 特性、事务命令、回滚与提交演示、隔离级别 |
-| 二十二 | 索引：原理、使用、性能对比、注意事项 |
-| 二十三 | 账户管理与权限：创建账户、授权、改密、远程登录、删除账户 |
-| 二十四 | 主从同步：原理、好处、详细配置步骤 |
-| 二十五 | 速查：常用命令与语法总览 |
+| 八 | 基础查询：查询列、别名、去重 |
+| 九 | 条件查询：比较运算符、逻辑运算符、模糊查询、范围查询、空判断、优先级 |
+| 十 | 排序：order by、asc/desc、多列排序 |
+| 十一 | 聚合函数：count、max、min、sum、avg |
+| 十二 | 分组：group by、group_concat、having、with rollup |
+| 十三 | 窗口函数（8.0 新增）：rank、dense_rank、row_number |
+| 十四 | 分页：limit、总页数与第 n 页的计算 |
+| 十五 | 连接查询：内连接、左连接、右连接 |
+| 十六 | 自关联：省市区数据的单表设计 |
+| 十七 | 子查询：标量、列、行子查询 |
+| 十八 | SELECT 完整语法与执行顺序 |
+| 十九 | 视图：定义、使用、删除与作用 |
+| 二十 | 事务：ACID 特性、事务命令、回滚与提交演示、隔离级别 |
+| 二十一 | 索引：原理、使用、性能对比、注意事项 |
+| 二十二 | 账户管理与权限：创建账户、授权、改密、远程登录、删除账户 |
+| 二十三 | 主从同步：原理、好处、详细配置步骤 |
+| 二十四 | 速查：常用命令与语法总览 |
 
 ---
 
@@ -786,7 +785,7 @@ drop table if exists students;
 
 ## 六、数据增删改（DML）
 
-> 本章对应 CRUD 中的 **C**（增）、**U**（改）、**D**（删），查询 **R** 先看基本用法，详见第八章之后。
+> 本章对应 CRUD 中的 **C**（增）、**U**（改）、**D**（删），查询 **R** 先看基本用法，详见后面的查询各章。
 >
 > 为便于演示，本章假定 `students` 表的结构如下（在 5.2 的基础上增加了 `birth` 列）：
 
@@ -997,6 +996,56 @@ $mysql -uroot -p test_db_new < test_db.sql
 | **一对多** | 在“多”的一方（表 B）创建一个字段，存储“一”的一方（表 A）的主键值 | 班级（一）↔ 学生（多）：学生表的 `cls_id` 存班级表的 `id` |
 | **多对多** | **新建第三张表 C**，只有两个字段，一个存 A 的主键值，一个存 B 的主键值 | 学生 ↔ 课程：新建“选课表”（`student_id`、`course_id`） |
 
+**一对一示例**
+
+```sql
+-- 一对一示例：用户表（主表），只存用户的基本信息
+create table users(
+    -- id：用户编号，无符号整型，自增主键
+    id int unsigned primary key auto_increment,
+    -- username：用户名，最长 20 个字符，不允许为空
+    username varchar(20) not null
+-- 右括号结束列定义，分号结束整条语句
+);
+-- 一对一示例：用户详情表，每个用户最多对应一条详情，每条详情只属于一个用户
+create table user_detail(
+    -- id：详情编号，无符号整型，自增主键
+    id int unsigned primary key auto_increment,
+    -- user_id：所属用户编号，存放 users 表的 id；
+    -- unique 保证同一个用户只能有一条详情，这是“一对一”区别于“一对多”的关键
+    user_id int unsigned not null unique,
+    -- id_card：身份证号，定长 18 个字符
+    id_card char(18)
+-- 右括号结束列定义，分号结束整条语句
+);
+```
+
+**一对多示例**
+
+```sql
+-- 一对多示例：班级表（“一”的一方）
+create table classes(
+    -- id：班级编号，无符号整型，自增主键，会被学生表引用
+    id int unsigned primary key auto_increment,
+    -- name：班级名称，最长 20 个字符，不允许为空
+    name varchar(20) not null
+-- 右括号结束列定义，分号结束整条语句
+);
+-- 一对多示例：学生表（“多”的一方），一个班级可以有多个学生，一个学生只属于一个班级
+create table students(
+    -- id：学生编号，无符号整型，自增主键
+    id int unsigned primary key auto_increment,
+    -- name：学生姓名，最长 20 个字符，不允许为空
+    name varchar(20) not null,
+    -- cls_id：所属班级编号，存放 classes 表的 id；
+    -- 不加 unique，所以多个学生可以填同一个班级编号（外键约束见 7.4）
+    cls_id int unsigned
+-- 右括号结束列定义，分号结束整条语句
+);
+```
+
+**多对多示例**
+
 ```sql
 -- 多对多示例：学生选课的关系表（中间表），只存两个表的主键值
 create table student_course(
@@ -1028,136 +1077,24 @@ insert into students(name,birth,cls_id) values('张三','2020-1-9',1);
 
 > **提醒**：外键会拦截不合法的数据，但也有代价：删除或修改被引用的班级时，如果还有学生引用它，也会失败（需先处理学生）。这是外键“降低性能、增加耦合”的体现，所以实际开发中多由程序逻辑层保证。
 
-### 7.5 设计示例：班级表与学生表
-
-> 设计两张表：
->
-> - **班级表 `classes`**：`id`、`name`、`isdelete`
-> - **学生表 `students`**：`id`、`name`、`birthday`、`gender`、`clsid`、`isdelete`
->
-> 其中 `clsid` 体现了班级与学生的**一对多**关系，`isdelete` 用于**逻辑删除**。
-
 ---
 
-## 八、查询准备
+## 八、基础查询
 
-> 从本章开始学习**查询（DQL）**，这是 SQL 中最重要、最复杂的部分。先创建测试库、测试表并准备数据，后面所有查询示例都基于它们。
-
-### 8.1 创建数据库与数据表
-
-```sql
--- create database 库名 charset=字符集：创建测试数据库，字符集为 utf8
-create database python_test_1 charset=utf8;
--- use 库名：切换到该数据库，之后的建表和查询都在这个库中进行
-use python_test_1;
-
--- 创建 students 表（学生表）
-create table students(
-    -- id：无符号整型，主键，自动增长，不为空
-    id int unsigned primary key auto_increment not null,
-    -- name：姓名，最多 20 个字符，默认空字符串
-    name varchar(20) default '',
-    -- age：年龄，无符号 tinyint（0~255），默认 0
-    age tinyint unsigned default 0,
-    -- height：身高（cm），共 5 位数字，其中 2 位小数
-    height decimal(5,2),
-    -- gender：性别，枚举，默认 '保密'；序号 1=男，2=女，3=中性，4=保密
-    gender enum('男','女','中性','保密') default '保密',
-    -- cls_id：所属班级编号，无符号整型，默认 0（对应 classes.id，未建外键）
-    cls_id int unsigned default 0,
-    -- is_delete：逻辑删除标记，bit 类型，0=未删除，1=已删除
-    is_delete bit default 0
--- 右括号结束列定义，分号结束整条语句
-);
-
--- 创建 classes 表（班级表）
-create table classes (
-    -- id：无符号整型，主键，自动增长，不为空
-    id int unsigned auto_increment primary key not null,
-    -- name：班级名称，最多 30 个字符，not null 不允许为空
-    name varchar(30) not null
--- 右括号结束列定义，分号结束整条语句
-);
-```
-
-### 8.2 准备数据
-
-```sql
--- 向 students 表中插入 14 行数据（gender 用枚举序号：1=男 2=女 3=中性 4=保密）
--- 列依次是：姓名、年龄、身高、性别序号、班级编号、是否逻辑删除；id 不写，由自增生成
-insert into students(name,age,height,gender,cls_id,is_delete) values
--- 小明：18 岁，180cm，性别 2（女），1 班，未删除
-('小明', 18, 180.00, 2, 1, 0),
--- 小月月：18 岁，180cm，女，2 班，已删除
-('小月月', 18, 180.00, 2, 2, 1),
--- 彭于晏：29 岁，185cm，性别 1（男），1 班，未删除
-('彭于晏', 29, 185.00, 1, 1, 0),
--- 刘德华：59 岁，175cm，男，2 班，已删除
-('刘德华', 59, 175.00, 1, 2, 1),
--- 黄蓉：38 岁，160cm，女，1 班，未删除
-('黄蓉', 38, 160.00, 2, 1, 0),
--- 凤姐：28 岁，150cm，性别 4（保密），2 班，已删除
-('凤姐', 28, 150.00, 4, 2, 1),
--- 王祖贤：18 岁，172cm，女，1 班，已删除
-('王祖贤', 18, 172.00, 2, 1, 1),
--- 周杰伦：36 岁，身高 NULL（未填写，后面空判断用），男，1 班，未删除
-('周杰伦', 36, NULL, 1, 1, 0),
--- 程坤：27 岁，181cm，男，2 班，未删除
-('程坤', 27, 181.00, 1, 2, 0),
--- 刘亦菲：25 岁，166cm，女，2 班，未删除
-('刘亦菲', 25, 166.00, 2, 2, 0),
--- 金星：33 岁，162cm，性别 3（中性），3 班（班级表中不存在），已删除
-('金星', 33, 162.00, 3, 3, 1),
--- 静香：12 岁，180cm，女，4 班（班级表中不存在），未删除
-('静香', 12, 180.00, 2, 4, 0),
--- 郭靖：12 岁，170cm，男，4 班（班级表中不存在），未删除
-('郭靖', 12, 170.00, 1, 4, 0),
--- 周杰：34 岁，176cm，女，5 班（班级表中不存在），未删除；最后一行以分号结束
-('周杰', 34, 176.00, 2, 5, 0);
-
--- 向 classes 表中插入数据：全列插入，id 用 0 占位自动生成，所以会得到 id=1、2 两个班级
-insert into classes values (0, 'python_01期'), (0, 'python_02期');
-```
-
-> **数据概览**（后面的示例结果都基于它）：
-
-| id | name | age | height | gender | cls_id | is_delete |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | 小明 | 18 | 180.00 | 女 | 1 | 0 |
-| 2 | 小月月 | 18 | 180.00 | 女 | 2 | 1 |
-| 3 | 彭于晏 | 29 | 185.00 | 男 | 1 | 0 |
-| 4 | 刘德华 | 59 | 175.00 | 男 | 2 | 1 |
-| 5 | 黄蓉 | 38 | 160.00 | 女 | 1 | 0 |
-| 6 | 凤姐 | 28 | 150.00 | 保密 | 2 | 1 |
-| 7 | 王祖贤 | 18 | 172.00 | 女 | 1 | 1 |
-| 8 | 周杰伦 | 36 | NULL | 男 | 1 | 0 |
-| 9 | 程坤 | 27 | 181.00 | 男 | 2 | 0 |
-| 10 | 刘亦菲 | 25 | 166.00 | 女 | 2 | 0 |
-| 11 | 金星 | 33 | 162.00 | 中性 | 3 | 1 |
-| 12 | 静香 | 12 | 180.00 | 女 | 4 | 0 |
-| 13 | 郭靖 | 12 | 170.00 | 男 | 4 | 0 |
-| 14 | 周杰 | 34 | 176.00 | 女 | 5 | 0 |
-
-> **注意**：`classes` 表只有 2 个班级（id 为 1、2），而学生的 `cls_id` 中有 3、4、5，它们在班级表中找不到对应记录，这正是后面“连接查询”区分内、左、右连接的关键数据。
-
----
-
-## 九、基础查询
-
-### 9.1 查询所有字段与指定字段
+### 8.1 查询所有字段与指定字段
 
 ```sql
 -- 查询所有字段：select * from 表名;
--- * 是通配符，代表表中所有列；结果为 14 行 × 7 列的结果集
+-- * 是通配符，代表表中所有列；结果集包含表中所有行和所有列
 select * from students;
 -- 查询指定字段：select 列1,列2,... from 表名;
--- 只返回 name 一列，结果为 14 行 × 1 列
+-- 只返回 name 一列，行数与表中的行数相同
 select name from students;
 ```
 
-### 9.2 使用 `as` 起别名
+### 8.2 使用 `as` 起别名
 
-> `as` 可以给**字段**或**表**起别名（`as` 可以省略，但建议写上，更清晰）。别名常用于：让结果列名更易读；表名太长时简写；同一张表自连接时区分（见第十七章）。
+> `as` 可以给**字段**或**表**起别名（`as` 可以省略，但建议写上，更清晰）。别名常用于：让结果列名更易读；表名太长时简写；同一张表自连接时区分（见第十六章）。
 
 ```sql
 -- 给字段起别名：列 as 别名；只改变结果集的列标题，不改变表结构
@@ -1172,7 +1109,7 @@ select students.id, students.name, students.gender from students;
 select s.id, s.name, s.gender from students as s;
 ```
 
-### 9.3 消除重复行（`distinct`）
+### 8.3 消除重复行（`distinct`）
 
 > 在 `select` 后面、列前使用 `distinct` 可以消除重复的行。
 >
@@ -1182,7 +1119,7 @@ select s.id, s.name, s.gender from students as s;
 
 ```sql
 -- distinct：放在 select 之后、列之前，消除结果中完全重复的行
--- 查询学生表中出现过的性别（去重，只显示 男/女/中性/保密 四种）
+-- 查询学生表中出现过的性别（去重，每种性别只显示一次）
 select distinct gender from students;
 -- 多列去重：只有 (gender, cls_id) 两列的组合都相同的行才会被去重
 select distinct gender, cls_id from students;
@@ -1190,7 +1127,7 @@ select distinct gender, cls_id from students;
 
 ---
 
-## 十、条件查询
+## 九、条件查询
 
 > 使用 `where` 子句对表中的数据**筛选**，结果为 `true` 的行才会出现在结果集中。
 >
@@ -1204,7 +1141,7 @@ select distinct gender, cls_id from students;
 select * from students where id=1;
 ```
 
-### 10.1 比较运算符
+### 9.1 比较运算符
 
 | 运算符 | 含义 | 备注 |
 | --- | --- | --- |
@@ -1216,9 +1153,9 @@ select * from students where id=1;
 | `!=` 或 `<>` | 不等于 | 讲义标注“低效率操作，不要使用”：不等于通常无法利用索引，大表上应尽量避免 |
 
 ```sql
--- 例 1：查询编号大于 3 的学生；> 表示大于，结果为 id 4~14 的 11 行
+-- 例 1：查询编号大于 3 的学生；> 表示大于
 select * from students where id > 3;
--- 例 2：查询编号不大于 4 的学生；<= 表示小于等于，结果为 id 1~4 的 4 行
+-- 例 2：查询编号不大于 4 的学生；<= 表示小于等于
 select * from students where id <= 4;
 -- 例 3：查询姓名不是“黄蓉”的学生；!= 表示不等于（也可写 <>），字符串要用单引号
 select * from students where name != '黄蓉';
@@ -1226,7 +1163,7 @@ select * from students where name != '黄蓉';
 select * from students where is_delete=0;
 ```
 
-### 10.2 逻辑运算符
+### 9.2 逻辑运算符
 
 | 运算符 | 含义 | 备注 |
 | --- | --- | --- |
@@ -1243,7 +1180,7 @@ select * from students where id > 3 and gender=2;
 select * from students where id < 4 or is_delete=0;
 ```
 
-### 10.3 模糊查询（`like`）
+### 9.3 模糊查询（`like`）
 
 > `like` 用于**字符串**的模糊匹配，有两个通配符：
 >
@@ -1264,7 +1201,7 @@ select * from students where name like '黄%' or name like '%靖';
 
 > **性能提示（补充）**：`like '黄%'`（前缀匹配）可以使用索引；`like '%靖'`（以通配符开头）无法使用索引，会全表扫描。
 
-### 10.4 范围查询
+### 9.4 范围查询
 
 | 写法 | 含义 |
 | --- | --- |
@@ -1283,7 +1220,7 @@ select * from students where id between 3 and 8;
 select * from students where id between 3 and 8 and gender=1;
 ```
 
-### 10.5 空判断
+### 9.5 空判断
 
 > **注意**：`NULL` 与 `''`（空字符串）是**不同的**！`NULL` 表示“未知 / 没有值”，`''` 是一个长度为 0 的字符串。
 >
@@ -1293,7 +1230,7 @@ select * from students where id between 3 and 8 and gender=1;
 > - `is not null`：判非空
 
 ```sql
--- 例 13：查询没有填写身高的学生（结果：周杰伦）
+-- 例 13：查询没有填写身高的学生（即 height 为 NULL 的学生）
 -- is null：判断列值是否为 NULL，不能写成 height = null
 select * from students where height is null;
 -- 例 14：查询填写了身高的学生
@@ -1304,7 +1241,7 @@ select * from students where height is not null;
 select * from students where height is not null and gender=1;
 ```
 
-### 10.6 运算优先级
+### 9.6 运算优先级
 
 > 优先级由高到低依次为：**小括号 → `not` → 比较运算符 → 逻辑运算符**。
 >
@@ -1321,7 +1258,7 @@ select * from students where gender=1 and (id>10 or is_delete=0);
 
 ---
 
-## 十一、排序
+## 十、排序
 
 > 为了方便查看数据，可以对数据进行排序。
 >
@@ -1351,7 +1288,7 @@ order by age desc, height desc;
 
 ---
 
-## 十二、聚合函数
+## 十一、聚合函数
 
 > 为了快速得到**统计数据**，经常会用到下面 5 个聚合函数。聚合函数对**一组行**进行计算，返回**一个值**。
 >
@@ -1367,59 +1304,48 @@ order by age desc, height desc;
 
 > ---
 >
-> **补充**：聚合函数会**忽略 `NULL`**（`count(*)` 除外），如 `avg(height)` 不会把 `周杰伦` 的空身高当成 0。
+> **补充**：聚合函数会**忽略 `NULL`**（`count(*)` 除外），如 `avg(height)` 不会把身高为 `NULL` 的行当成 0。
 
 ```sql
--- 例 1：查询学生总数（结果：14）
+-- 例 1：查询学生总数
 -- count(*)：统计结果集的总行数，返回一个整数
 select count(*) from students;
--- 例 2：查询女生的编号最大值（结果：13）
+-- 例 2：查询女生的编号最大值
 -- where 先筛出女生（gender=2），max(id) 再取这些行 id 的最大值
 select max(id) from students where gender=2;
--- 例 3：查询未删除的学生最小编号（结果：1）
+-- 例 3：查询未删除的学生最小编号
 -- where 先筛出未删除的行，min(id) 再取最小值
 select min(id) from students where is_delete=0;
--- 例 4：查询男生的总年龄（29+59+36+27+12=163）
+-- 例 4：查询男生的总年龄
 -- sum(age)：对筛选出的男生的 age 求和
 select sum(age) from students where gender=1;
--- 平均年龄：总年龄 / 人数（结果：32.6，等价于 avg(age)）
+-- 平均年龄：总年龄 / 人数（等价于 avg(age)）
 -- 两个聚合函数可以在同一个表达式中做除法运算
 select sum(age)/count(*) from students where gender=1;
--- 例 5：查询未删除女生的编号平均值（id 为 1、5、10、12、13，平均值 8.2）
+-- 例 5：查询未删除女生的编号平均值
 -- avg(id)：求筛选出的行的 id 平均值，忽略 NULL
 select avg(id) from students where is_delete=0 and gender=2;
 ```
 
 ---
 
-## 十三、分组
+## 十二、分组
 
-### 13.1 `group by`
+### 12.1 `group by`
 
 > **含义**：将查询结果按照 **1 个或多个字段**进行分组，**字段值相同的为一组**。`group by` 可用于单个字段分组，也可用于多个字段分组。
 
 ```sql
 -- group by 列：按该列的值分组，值相同的行归为一组
--- 按性别分组：gender 共有 4 个不同的值，所以分为 4 组，结果 4 行，每组只显示一条
+-- 按性别分组：gender 的每个不同取值为一组，每组只显示一条
 select gender from students group by gender;
-```
-
-```
-+--------+
-| gender |
-+--------+
-| 男     |
-| 女     |
-| 中性   |
-| 保密   |
-+--------+
 ```
 
 > 当 `group by` **单独使用**时，只显示出每组的第一条记录（去重效果），实际意义不大。**分组通常要配合聚合函数、`group_concat()`、`having`、`with rollup` 使用**。
 >
 > **重要规则**：`select` 后面出现的列，要么出现在 `group by` 中，要么放在聚合函数里；否则在默认的 `ONLY_FULL_GROUP_BY` 模式下（8.0 默认开启）会报错。
 
-### 13.2 `group by` + `group_concat()`
+### 12.2 `group by` + `group_concat()`
 
 > `group_concat(字段名)` 可以作为一个输出字段使用，表示**分组之后，把每一组的某字段的值拼接成一个字符串**（`concat` 是“构造合并”的含义，默认用逗号分隔）。
 
@@ -1429,73 +1355,29 @@ select gender from students group by gender;
 select gender, group_concat(name) from students group by gender;
 ```
 
-```
-+--------+-----------------------------------------------------------+
-| gender | group_concat(name)                                        |
-+--------+-----------------------------------------------------------+
-| 男     | 彭于晏,刘德华,周杰伦,程坤,郭靖                            |
-| 女     | 小明,小月月,黄蓉,王祖贤,刘亦菲,静香,周杰                  |
-| 中性   | 金星                                                      |
-| 保密   | 凤姐                                                      |
-+--------+-----------------------------------------------------------+
-```
-
 ```sql
 -- 同理，group_concat(id) 把每一组的 id 拼接起来（整数会被转成字符串）
 -- 每个性别分组下，有哪些学生的 id
 select gender, group_concat(id) from students group by gender;
 ```
 
-```
-+--------+------------------+
-| gender | group_concat(id) |
-+--------+------------------+
-| 男     | 3,4,8,9,14       |
-| 女     | 1,2,5,7,10,12,13 |
-| 中性   | 11               |
-| 保密   | 6                |
-+--------+------------------+
-```
-
-### 13.3 `group by` + 聚合函数
+### 12.3 `group by` + 聚合函数
 
 > 既然可以统计出每个分组的某字段的值的集合，那么也可以用**聚合函数**对每组的值做计算：每个分组算一个结果。
 
 ```sql
 -- 配合聚合函数，每个分组各计算出一个结果：avg(age) 求每组的平均年龄
--- 分别统计每种性别的平均年龄；结果 4 行，列为 gender、avg(age)（小数）
+-- 分别统计每种性别的平均年龄；每组一行，列为 gender、avg(age)（小数）
 select gender, avg(age) from students group by gender;
-```
-
-```
-+--------+----------+
-| gender | avg(age) |
-+--------+----------+
-| 男     |  32.6000 |
-| 女     |  23.2857 |
-| 中性   |  33.0000 |
-| 保密   |  28.0000 |
-+--------+----------+
 ```
 
 ```sql
 -- count(*) 在分组查询中统计的是每一组的行数
--- 分别统计每种性别的人数；结果 4 行，列为 gender、count(*)（整数）
+-- 分别统计每种性别的人数；每组一行，列为 gender、count(*)（整数）
 select gender, count(*) from students group by gender;
 ```
 
-```
-+--------+----------+
-| gender | count(*) |
-+--------+----------+
-| 男     |        5 |
-| 女     |        7 |
-| 中性   |        1 |
-| 保密   |        1 |
-+--------+----------+
-```
-
-### 13.4 `group by` + `having`
+### 12.4 `group by` + `having`
 
 > `having 条件表达式`：用来**对分组之后的结果**再指定条件。
 >
@@ -1513,17 +1395,8 @@ select gender, count(*) from students group by gender;
 
 ```sql
 -- having 条件：在分组之后对各组的结果再过滤，条件中可以使用聚合函数
--- 查询人数大于 2 的性别分组（中性、保密各只有 1 人，被过滤掉）
+-- 查询人数大于 2 的性别分组（人数不超过 2 的分组被过滤掉）
 select gender, count(*) from students group by gender having count(*) > 2;
-```
-
-```
-+--------+----------+
-| gender | count(*) |
-+--------+----------+
-| 男     |        5 |
-| 女     |        7 |
-+--------+----------+
 ```
 
 ```sql
@@ -1534,26 +1407,14 @@ select gender, count(*) from students where is_delete=0
 group by gender having count(*) > 2;
 ```
 
-### 13.5 `group by` + `with rollup`
+### 12.5 `group by` + `with rollup`
 
 > `with rollup` 的作用是：在最后**新增一行**，用来记录当前列里**所有记录的汇总**（该行分组列的值为 `NULL`）。如果使用 `having`，要放在 `with rollup` 之后。
 
 ```sql
 -- with rollup：写在 group by 之后，在结果最后追加一行汇总行，该行分组列的值为 NULL
--- 按性别统计人数，并在最后一行汇总总人数（5+7+1+1=14）
+-- 按性别统计人数，并在最后一行汇总所有分组的总人数
 select gender, count(*) from students group by gender with rollup;
-```
-
-```
-+--------+----------+
-| gender | count(*) |
-+--------+----------+
-| 男     |        5 |
-| 女     |        7 |
-| 中性   |        1 |
-| 保密   |        1 |
-| NULL   |       14 |
-+--------+----------+
 ```
 
 ```sql
@@ -1562,21 +1423,9 @@ select gender, count(*) from students group by gender with rollup;
 select gender, group_concat(age) from students group by gender with rollup;
 ```
 
-```
-+--------+-------------------------------------------+
-| gender | group_concat(age)                         |
-+--------+-------------------------------------------+
-| 男     | 29,59,36,27,12                            |
-| 女     | 18,18,38,18,25,12,34                      |
-| 中性   | 33                                        |
-| 保密   | 28                                        |
-| NULL   | 29,59,36,27,12,18,18,38,18,25,12,34,33,28 |
-+--------+-------------------------------------------+
-```
-
 ---
 
-## 十四、窗口函数（MySQL 8.0 新增）
+## 十三、窗口函数（MySQL 8.0 新增）
 
 > **窗口函数**可以在**不合并行**的前提下，对每一行基于“一个窗口（一组相关的行）”进行计算，典型用途是**排名**。与 `group by` 的区别：`group by` 会把每组合并为一行，窗口函数**保留所有原始行**，并多出一列计算结果。
 >
@@ -1599,14 +1448,14 @@ select gender, group_concat(age) from students group by gender with rollup;
 
 ```sql
 -- 按班级分组，在每个班级内按年龄从大到小排名：
--- rank1：rank() 排名；dese_rank：dense_rank() 排名；row_num：row_number() 行号
--- 第一行：* 保留原表所有列，后面追加三个计算列（窗口函数不合并行，仍是 14 行）
+-- rank1：rank() 排名；dense_rank：dense_rank() 排名；row_num：row_number() 行号
+-- 第一行：* 保留原表所有列，后面追加三个计算列（窗口函数不合并行，结果行数与原表相同）
 select *,
     -- over (...) 定义窗口：partition by cls_id 按班级分窗口，order by age desc 窗口内按年龄降序
     -- rank()：并列排名，并列后跳号（1,2,2,4）
     rank() over (partition by cls_id order by age desc) as rank1,
     -- dense_rank()：密集排名，并列后不跳号（1,2,2,3）
-    dense_rank() over (partition by cls_id order by age desc) as dese_rank,
+    dense_rank() over (partition by cls_id order by age desc) as dense_rank,
     -- row_number()：行号，不并列，依次编号（1,2,3,4）
     row_number() over (partition by cls_id order by age desc) as row_num
 -- 数据来源：students 表
@@ -1618,20 +1467,20 @@ select *,
     -- 全体学生的 rank() 排名
     rank() over (order by age desc) as rank1,
     -- 全体学生的 dense_rank() 排名
-    dense_rank() over (order by age desc) as dese_rank,
+    dense_rank() over (order by age desc) as dense_rank,
     -- 全体学生的 row_number() 行号
     row_number() over (order by age desc) as row_num
 -- 数据来源：students 表
 from students;
 ```
 
-> **结果解读**：对全体学生按年龄降序，年龄 18 岁有 3 人（小明、小月月、王祖贤）并列。前面比他们大的有 9 人（59、38、36、34、33、29、28、27、25 岁）。按 `rank()`，这 3 人均为第 10 名，下一个 12 岁的是第 13 名（跳过 11、12）；按 `dense_rank()`，这 3 人均为第 10 名，下一个 12 岁是第 11 名（不跳号）；按 `row_number()`，则是 10、11、12、13……依次编号（并列行之间的先后顺序不确定）。
+> **结果解读**：对全体学生按年龄降序，年龄相同的学生并列。按 `rank()`，并列的学生名次相同，下一个不同年龄的名次会跳过被占用的名次；按 `dense_rank()`，并列的学生名次相同，下一个名次紧接着，不跳号；按 `row_number()`，始终依次编号、不并列（并列行之间的先后顺序不确定）。
 >
 > 参考：[MySQL 官方窗口函数文档](https://dev.mysql.com/doc/refman/8.0/en/window-function-descriptions.html)。
 
 ---
 
-## 十五、分页（获取部分行）
+## 十四、分页（获取部分行）
 
 > 当数据量过大时，在一页中查看数据非常麻烦，所以需要**分页**显示。
 >
@@ -1649,7 +1498,7 @@ select * from students where gender=1 limit 0,3;
 select * from students limit 3,3;
 ```
 
-### 15.1 分页公式
+### 14.1 分页公式
 
 > 已知：**每页显示 `m` 条数据，当前显示第 `n` 页**。
 >
@@ -1663,19 +1512,19 @@ select * from students limit 3,3;
 
 ```sql
 -- 总页数：每页 5 条，count(*)/5 得到小数，ceiling() 是向上取整函数
--- （students 有 14 条，14/5=2.8，向上取整为 3）
+-- （总条数除以每页条数，不能整除时向上取整，如 14 条、每页 5 条，14/5=2.8，得 3 页）
 select ceiling(count(*)/5) from students;
 -- 第 n 页的数据（每页 m 条）：讲义写作 limit (n-1)*m,m
 -- 注意：limit 后面只能写数字，不能直接写表达式，(n-1)*m 要由程序先算好
 -- 例：每页 5 条，第 3 页，则 (3-1)*5=10，即 limit 10,5（跳过前 10 行，取 5 行）
-select * from students where is_delete=0 limit 10,5;
+select * from students limit 10,5;
 ```
 
 > **注意**：分页时最好配合 `order by` 指定排序，否则不保证每次返回的行顺序一致，可能出现翻页重复或遗漏。
 
 ---
 
-## 十六、连接查询
+## 十五、连接查询
 
 > 当查询结果的**列来源于多张表**时，需要将多张表**连接**成一个大的数据集，再选择合适的列返回。
 >
@@ -1700,33 +1549,25 @@ select * from students where is_delete=0 limit 10,5;
 ```sql
 -- 例 1：内连接，查询学生与班级的对应数据
 -- inner join：只保留两表匹配的行；on 后是连接条件：学生的 cls_id 等于班级的 id
--- 只有 cls_id 为 1、2 的学生才能在 classes 中找到班级，所以结果是 10 行
+-- 只有在 classes 中能找到对应班级的学生才会保留
 select * from students inner join classes on students.cls_id = classes.id;
 
--- 例 2：左连接（以学生表为主）：14 个学生全部保留，cls_id 为 3、4、5 的学生，班级信息为 NULL
+-- 例 2：左连接（以学生表为主）：学生表的所有行都保留，找不到对应班级的学生，班级信息为 NULL
 -- as s / as c：分别给两张表起别名，后面用 s、c 引用，书写更简短
 select * from students as s left join classes as c on s.cls_id = c.id;
 
 -- 例 3：右连接（以班级表为主）：班级表的所有班级都保留，没有学生的班级学生信息为 NULL
--- 本例中两个班级都有学生，所以结果也是 10 行
+-- 学生表中找不到对应班级的行不会出现在结果中
 select * from students as s right join classes as c on s.cls_id = c.id;
 
 -- 例 4：查询学生姓名及班级名称（只选部分列，两个表都有 name 列，必须用别名区分）
--- s.name 是学生姓名，c.name 是班级名称，结果为 10 行 × 2 列
+-- s.name 是学生姓名，c.name 是班级名称，结果为 2 列：学生姓名、班级名称
 select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id;
 ```
 
-> **三种连接的结果对比**（基于第八章的数据）：
-
-| 连接 | 结果行数 | 说明 |
-| --- | --- | --- |
-| `inner join` | 10 | 只有 `cls_id` 为 1 或 2 的 10 名学生 |
-| `left join`（学生为左表） | 14 | 10 名匹配的学生 + `金星`、`静香`、`郭靖`、`周杰` 4 名没有班级的学生（班级列为 `NULL`） |
-| `right join`（班级为右表） | 10 | 两个班级都有学生，没有“只在班级表中存在”的数据 |
-
 ---
 
-## 十七、自关联
+## 十六、自关联
 
 > 以**省市区**数据为例。最直观的设计是两张表：
 >
@@ -1795,7 +1636,7 @@ where city.atitle = '广州市';
 
 ---
 
-## 十八、子查询
+## 十七、子查询
 
 > **子查询**：在一个 `select` 语句中，**嵌入了另外一个 `select` 语句**，被嵌入的 `select` 语句称为**子查询语句**；外面的第一条 `select` 语句称为**主查询**。
 >
@@ -1817,7 +1658,7 @@ where city.atitle = '广州市';
 
 > ---
 
-### 18.1 标量子查询
+### 17.1 标量子查询
 
 > 需求：查询身高大于平均身高的学生。拆成两步：①求平均身高；②查询大于该值的学生。用子查询一步完成：
 
@@ -1827,7 +1668,7 @@ where city.atitle = '广州市';
 select * from students where height > (select avg(height) from students);
 ```
 
-### 18.2 列子查询
+### 17.2 列子查询
 
 > 需求：查询**还有学生在读**的所有班级的名字。拆成两步：①找出学生表中所有的班级 id；②找出班级表中对应的名字。
 
@@ -1837,7 +1678,7 @@ select * from students where height > (select avg(height) from students);
 select name from classes where id in (select cls_id from students);
 ```
 
-### 18.3 行子查询
+### 17.3 行子查询
 
 > 需求：查找班级中**年龄最大、身高最高**的学生。
 >
@@ -1848,13 +1689,13 @@ select name from classes where id in (select cls_id from students);
 -- 第一行：主查询，查询 students 的所有列
 select * from students
 -- 第二行：(height, age) 是行元素；= 要求两个值同时与子查询的两列分别相等
--- 子查询 select max(height), max(age) 返回一行两列：(185.00, 59)
+-- 子查询 select max(height), max(age) 返回一行两列：(最大身高, 最大年龄)
 where (height, age) = (select max(height), max(age) from students);
 ```
 
-> **注意**：此例中，最高身高 185（彭于晏）和最大年龄 59（刘德华）**不是同一个人**，所以没有学生同时满足 `height=185 and age=59`，这条语句的结果是**空**。行子查询要求“同一行同时满足”，使用时要注意业务含义。
+> **注意**：此例中，最高身高和最大年龄通常**不是同一个学生**的值，所以很可能没有学生同时满足两个条件，这条语句的结果是**空**。行子查询要求“同一行同时满足”，使用时要注意业务含义。
 
-### 18.4 子查询使用要点
+### 17.4 子查询使用要点
 
 > - **`in` 范围**：格式 `主查询 where 条件 in (列子查询)`
 > - 子查询用在 `=`、`>` 等比较运算符后面时，**只能返回一行一列**，返回多行会报错 `Subquery returns more than 1 row`
@@ -1863,9 +1704,9 @@ where (height, age) = (select max(height), max(age) from students);
 
 ---
 
-## 十九、SELECT 完整语法与执行顺序
+## 十八、SELECT 完整语法与执行顺序
 
-### 19.1 完整语法
+### 18.1 完整语法
 
 > 查询的完整格式（看起来复杂，其实很简单，**实际使用中只是其中某些部分的组合，而不是全部**）：
 
@@ -1903,7 +1744,7 @@ order by ...
 limit start, count
 ```
 
-### 19.2 执行顺序
+### 18.2 执行顺序
 
 > 各个子句的**书写顺序**与**执行顺序**不同：书写时 `select` 在最前，但它是在分组、`having` 之后才执行的。**正确的执行顺序**为：
 
@@ -1921,22 +1762,22 @@ limit start, count
 
 ---
 
-## 二十、视图
+## 十九、视图
 
-### 20.1 为什么需要视图
+### 19.1 为什么需要视图
 
 > **问题**：对于复杂的查询，往往是由多个数据表进行**关联查询**而得到的。如果数据库因为需求等原因发生了改变，为了保证查询出来的数据与之前相同，就需要在多个地方进行修改，维护起来非常麻烦。
 >
 > **解决办法**：定义**视图**。
 
-### 20.2 视图是什么
+### 19.2 视图是什么
 
 > 通俗地讲，**视图就是一条 `select` 语句执行后返回的结果集**。所以创建视图的时候，主要工作就落在创建这条 SQL 查询语句上。
 >
 > - 视图是对若干张基本表的引用，是一张**虚表**，是查询语句执行的结果，**不存储具体的数据**（基本表的数据发生了改变，视图也会跟着改变）
 > - 方便操作，特别是查询操作，**减少复杂的 SQL 语句，增强可读性**
 
-### 20.3 视图的使用
+### 19.3 视图的使用
 
 > **命名建议**：视图名以 `v_` 开头，便于和普通表区分。
 
@@ -1979,7 +1820,7 @@ drop view v_stu_class;
 > - 讲义示例使用的是 `jing_dong` 库：`create view goods_view as (select goods.id as id, goods.name as name, goods_cates.name as type from goods left outer join goods_cates on goods_cates.id = goods.cate_id);`，思路与上面相同
 > - 简单的视图（单表、不含聚合、分组、`distinct` 等）通常可以通过视图 `insert`/`update`/`delete`，会作用到基本表；复杂视图（连接、聚合等）一般**不可更新**，所以视图主要用于**查询**
 
-### 20.4 视图的作用
+### 19.4 视图的作用
 
 | 作用 | 说明 |
 | --- | --- |
@@ -1990,9 +1831,9 @@ drop view v_stu_class;
 
 ---
 
-## 二十一、事务
+## 二十、事务
 
-### 21.1 为什么要有事务
+### 20.1 为什么要有事务
 
 > 事务广泛地运用于**订单系统、银行系统**等多种场景。
 >
@@ -2034,7 +1875,7 @@ update savings set balance = balance + 200.00 where customer_id = 10233276;
 commit;
 ```
 
-### 21.2 事务的四大特性（ACID）
+### 20.2 事务的四大特性（ACID）
 
 | 特性 | 英文 | 含义 | 以转账为例 |
 | --- | --- | --- | --- |
@@ -2043,7 +1884,7 @@ commit;
 | **隔离性** | Isolation | 一个事务所做的修改在**最终提交以前，对其他事务是不可见的** | 扣了钱还没加钱时，另一个汇总程序看到的支票余额**并没有**被减去 200 |
 | **持久性** | Durability | 一旦事务**提交**，其所做的修改会**永久保存**到数据库 | 提交后即使系统崩溃，修改的数据也不会丢失 |
 
-### 21.3 事务命令
+### 20.3 事务命令
 
 > **前提**：表的引擎类型必须是 **InnoDB** 才可以使用事务，这是 MySQL 表的**默认引擎**（`MyISAM` 引擎不支持事务）。
 >
@@ -2077,7 +1918,7 @@ show variables like 'autocommit';
 set autocommit = 0;
 ```
 
-### 21.4 回滚演示
+### 20.4 回滚演示
 
 > 为了演示效果，需要**打开两个终端窗口**，使用同一个数据库，操作同一张表（讲义用的是 `jing_dong` 库的 `goods_cates` 表）。
 
@@ -2089,7 +1930,7 @@ set autocommit = 0;
 | step4：回滚 | — | `rollback;` |
 | step5：查询 | `select * from goods_cates;`，**仍然没有新增数据**（修改已被撤销） | `select * from goods_cates;` 同样没有 |
 
-### 21.5 提交演示
+### 20.5 提交演示
 
 | 步骤 | 终端 1 | 终端 2 |
 | --- | --- | --- |
@@ -2099,7 +1940,7 @@ set autocommit = 0;
 | step4：提交 | — | `commit;` |
 | step5：查询 | `select * from goods_cates;`，**发现有新增的数据**（事务已提交，修改持久保存且对其他事务可见） | — |
 
-### 21.6 隔离级别（补充）
+### 20.6 隔离级别（补充）
 
 > 隔离性并不是“完全隔离”，为了兼顾性能，SQL 标准定义了**四种隔离级别**（《高性能 MySQL》中提到的“四种隔离级”）。隔离级别越高，数据越安全，但并发性能越低。
 
@@ -2127,9 +1968,9 @@ set session transaction isolation level read committed;
 
 ---
 
-## 二十二、索引
+## 二十一、索引
 
-### 22.1 为什么需要索引
+### 21.1 为什么需要索引
 
 > **思考**：在图书馆中是如何找到一本书的？——不会一本一本翻，而是先看**目录/分类索引**。
 >
@@ -2137,13 +1978,13 @@ set session transaction isolation level read committed;
 >
 > 当数据库中数据量很大时，查找数据会变得很慢。**优化方案：索引**——就是**有序的数据结构**，常见有 **B+ 树索引**、**哈希索引**。
 
-### 22.2 索引是什么
+### 21.2 索引是什么
 
 > **索引**是一种特殊的文件（InnoDB 数据表上的索引是表空间的一个组成部分），它们包含着对数据表里所有记录的**引用指针**。更通俗地说，数据库索引好比是**一本书前面的目录**，能加快数据库的查询速度。
 >
 > **索引的目的**在于**提高查询效率**。类比字典：要查“mysql”这个单词，我们会先定位到字母 m，再往下找 y，再找剩下的 sql。如果没有索引，就得把所有单词看一遍；如果想找 m 开头的单词呢？或者 ze 开头的单词呢？没有索引根本无法完成。
 
-### 22.3 索引的原理
+### 21.3 索引的原理
 
 > 除了词典，生活中随处可见索引的例子，如火车站的车次表、图书的目录等。它们的原理都是一样的：**通过不断缩小想要获得数据的范围来筛选出最终想要的结果，同时把随机的事件变成顺序的事件**，也就是总是通过同一种查找方式来锁定数据。
 >
@@ -2165,7 +2006,7 @@ set session transaction isolation level read committed;
 > - **叶子节点**才存放实际数据（或数据的指针），并且叶子节点之间用指针**串成有序链表**，方便范围查询
 > - 讲义中的示意：每个索引项约 12 字节（4 字节 `name` 信息 + 4 字节原有数据的指针 `p`，对 B+ 树来说**只有叶子节点才存这个实际数据指针** + 4 字节叶子节点指针）
 
-### 22.4 索引的使用
+### 21.4 索引的使用
 
 ```sql
 -- show index from 表名：查看某张表上的所有索引（结果含索引名 Key_name、列名 Column_name 等）
@@ -2186,7 +2027,7 @@ drop index 索引名称 on 表名;
 > - **联合（复合）索引**：`create index 索引名 on 表名(列1, 列2);`，遵循**最左前缀原则**——查询条件要从最左边的列开始连续使用才能用上索引
 > - 用 `explain select ...;` 可以查看一条查询是否使用了索引（看结果中的 `key` 列）
 
-### 22.5 索引演示：十万条数据的查询对比
+### 21.5 索引演示：十万条数据的查询对比
 
 **① 创建测试表**
 
@@ -2250,7 +2091,7 @@ select * from test_index where title='ha-99999';
 show profiles;
 ```
 
-### 22.6 索引类型
+### 21.6 索引类型
 
 > - **哈希索引**：通过哈希函数定位，适合等值查询，不支持范围查询（`Memory` 引擎使用；InnoDB 有自适应哈希索引，由系统自动管理）
 > - **B 树 / B+ 树索引**：默认创建的索引就是 **B+ 树索引**
@@ -2260,7 +2101,7 @@ show profiles;
 >
 > 详细资料：[聚集索引和非聚集索引](https://blog.csdn.net/hollis_chuang/article/details/102908445)。
 
-### 22.7 使用索引的注意事项
+### 21.7 使用索引的注意事项
 
 > - 建立**太多的索引**将会影响**更新和插入**的速度，因为数据变化时需要**同步更新每个索引文件**。对于一个**经常需要更新和插入**的表格，就没有必要为一个**很少使用**的 `where` 子句单独建立索引
 > - 对于**比较小的表**，排序的开销不会很大，也没有必要建立另外的索引
@@ -2280,13 +2121,13 @@ show profiles;
 
 ---
 
-## 二十三、账户管理与权限
+## 二十二、账户管理与权限
 
 > 在**生产环境**下操作数据库时，**绝对不可以使用 root 账户连接**，而是创建**特定的账户**，授予这个账户**特定的操作权限**，然后连接进行操作，主要的操作就是数据的 CRUD。
 >
 > 这一章属于**了解**内容（除非做 DBA）。
 
-### 23.1 MySQL 的账户体系
+### 22.1 MySQL 的账户体系
 
 > 根据账户所具有的权限不同，MySQL 的账户可以分为以下几种：
 >
@@ -2309,7 +2150,7 @@ show profiles;
 > 1. 进行账户操作时，需要使用 **root 账户**登录，这个账户拥有最高的实例级权限
 > 2. 通常都使用**数据库级**的操作权限
 
-### 23.2 查看所有用户
+### 22.2 查看所有用户
 
 > 所有用户及权限信息存储在 `mysql` 数据库的 `user` 表中。主要字段说明：
 >
@@ -2339,7 +2180,7 @@ mysql> select host,user,authentication_string from user;
 3 rows in set (0.00 sec)
 ```
 
-### 23.3 创建账户并授权
+### 22.3 创建账户并授权
 
 > 需要使用**实例级账户**登录后操作，以 `root` 为例。
 >
@@ -2401,7 +2242,7 @@ grant all privileges on jing_dong.* to 'laoli'@'%';
 
 > **注意**：8.0 中 `grant ... identified by '密码'` 的写法已被移除（会报语法错误），必须先 `create user` 创建账户，再 `grant` 授权。
 
-### 23.4 修改权限、回收权限
+### 22.4 修改权限、回收权限
 
 ```sql
 -- 修改（追加）权限：在原有基础上给 账户@主机 追加权限
@@ -2416,7 +2257,7 @@ revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 
 > `grant` / `revoke` 执行后权限通常即时生效；如果是直接修改 `mysql.user` 等系统表，则必须执行 `flush privileges;` 刷新。
 
-### 23.5 修改密码
+### 22.5 修改密码
 
 > 使用 `root` 登录后修改。使用 `alter user` 语句修改（8.0 已删除 `password()` 函数，不能再直接修改 `mysql.user` 表来改密码）。
 
@@ -2428,7 +2269,7 @@ alter user 'laowang'@'localhost' identified by 'luke123';
 flush privileges;
 ```
 
-### 23.6 远程登录（危险，慎用）
+### 22.6 远程登录（危险，慎用）
 
 > 远程登录的配置见 [3.2 开启远程连接](#32-开启远程连接)。下面补充两种方法的原理和排查。
 
@@ -2475,7 +2316,7 @@ select host, user from user;
 flush privileges;
 ```
 
-### 23.7 删除账户
+### 22.7 删除账户
 
 ```sql
 -- 语法 1（推荐）：使用 root 登录，drop user '用户名'@'主机';
@@ -2491,7 +2332,7 @@ flush privileges;
 
 > **推荐使用语法 1** 删除用户，如果语法 1 删除失败，再采用语法 2。
 
-### 23.8 忘记 root 密码怎么办
+### 22.8 忘记 root 密码怎么办
 
 > 一般也轮不到我们来管理 `root` 账户，这里只给出思路（万一遇到，参考 [忘记 root 密码的处理方法](http://blog.csdn.net/lxpbs8851/article/details/10895085)）：
 >
@@ -2504,9 +2345,9 @@ flush privileges;
 
 ---
 
-## 二十四、主从同步
+## 二十三、主从同步
 
-### 24.1 主从同步的定义与好处
+### 23.1 主从同步的定义与好处
 
 > **主从同步**使得数据可以从一个数据库服务器**复制**到其他服务器上。在复制数据时，一个服务器充当**主服务器**（master），其余的服务器充当**从服务器**（slave）。
 >
@@ -2518,7 +2359,7 @@ flush privileges;
 > - **提高数据安全**：数据已复制到从服务器，从服务器可以终止复制进程，所以可以**在从服务器上备份而不破坏主服务器**相应数据
 > - **分担主服务器压力**：在主服务器上生成实时数据，而在从服务器上**分析这些数据**，从而提高主服务器的性能
 
-### 24.2 主从同步的机制
+### 23.2 主从同步的机制
 
 > MySQL 服务器之间的主从同步是基于**二进制日志**（binlog）机制：
 >
@@ -2542,7 +2383,7 @@ flush privileges;
                                          └──────────────────────────┘
 ```
 
-### 24.3 配置主从同步的基本步骤
+### 23.3 配置主从同步的基本步骤
 
 > 有很多种配置主从同步的方法，可以总结为如下步骤：
 >
@@ -2552,11 +2393,11 @@ flush privileges;
 > 4. 如果在开始复制之前，数据库中**已经有数据**，就必须先创建一个**数据快照**（可以使用 `mysqldump` 导出数据库，或者直接复制数据文件），还原到从服务器
 > 5. 配置从服务器要连接的主服务器的 **IP 地址、登录授权、二进制日志文件名和位置**
 
-### 24.4 详细配置主从同步
+### 23.4 详细配置主从同步
 
 > 主和从的身份可以自己指定。这里将**虚拟机 Ubuntu 中的 MySQL 作为主服务器**，将 **Windows 中的 MySQL 作为从服务器**。在主从设置前，要保证 Ubuntu 与 Windows 间的**网络连通**。
 
-#### 24.4.1 备份主服务器原有数据到从服务器
+#### 23.4.1 备份主服务器原有数据到从服务器
 
 > 如果在设置主从同步前，主服务器上已有大量数据，可以使用 `mysqldump` 进行数据备份并还原到从服务器，以实现数据的复制。
 
@@ -2587,7 +2428,7 @@ $mysql -uroot -pmysql < master_db.sql
 
 > 还原完成后，查看表是否发生变化。**注意要关闭连接，再次打开连接**进行查看。
 
-#### 24.4.2 配置主服务器 master（Ubuntu 中的 MySQL）
+#### 23.4.2 配置主服务器 master（Ubuntu 中的 MySQL）
 
 **① 编辑配置文件，设置 `log_bin` 和 `server-id`**
 
@@ -2659,7 +2500,7 @@ show master status;
 >
 > 这两个参数**必须记下**，配置从服务器时会用到。
 
-#### 24.4.3 配置从服务器 slave（Windows 中的 MySQL）
+#### 23.4.3 配置从服务器 slave（Windows 中的 MySQL）
 
 **① 找到 Windows 中 MySQL 的配置文件 `my.ini`，将 `server-id` 修改为 2，保存退出**
 
@@ -2713,7 +2554,7 @@ show slave status\G
 >
 > 如果有 `No`，看同一结果中的 `Last_IO_Error`、`Last_SQL_Error` 排查原因（常见：网络不通、账号密码错误、日志文件名或位置写错、`server-id` 冲突）。
 
-#### 24.4.4 测试主从同步
+#### 23.4.4 测试主从同步
 
 ```sql
 -- 在 Ubuntu 的 MySQL（主服务器）中创建一个数据库：写操作会记入 binlog 并同步给从服务器
@@ -2733,9 +2574,9 @@ show databases;
 
 ---
 
-## 二十五、速查
+## 二十四、速查
 
-### 25.1 SQL 语句速查
+### 24.1 SQL 语句速查
 
 | 类别 | 语句 | 说明 |
 | --- | --- | --- |
@@ -2775,7 +2616,7 @@ show databases;
 | 账户 | `drop user '用户'@'主机';` | 删除账户 |
 | 账户 | `flush privileges;` | 刷新权限 |
 
-### 25.2 Shell 命令速查
+### 24.2 Shell 命令速查
 
 ```bash
 # service 服务名 动作：mysql 是服务名，start 启动服务
@@ -2801,7 +2642,7 @@ $mysqldump -uroot -p 库名 > 库名.sql
 $mysql -uroot -p 库名 < 库名.sql
 ```
 
-### 25.3 学习总结
+### 24.3 学习总结
 
 > - **SQL 分类**：`DQL` 查、`DML` 增删改、`DDL` 建库建表、`TPL` 事务、`DCL` 权限
 > - **设计表**：遵循三范式，一对多在“多”的一方加外键字段，多对多用中间表；重要数据用**逻辑删除**
