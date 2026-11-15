@@ -1272,6 +1272,29 @@ select * from students where gender=1 and id>10 or is_delete=0;
 select * from students where gender=1 and (id>10 or is_delete=0);
 ```
 
+### 9.7 查询时区分字符串大小写（`binary`）
+
+> MySQL 默认的字符集排序规则（如 `utf8_general_ci`、`utf8mb4_general_ci`，`ci` 即 case insensitive；`utf8` 与 `utf8mb4` 的 `_ci` 规则都不区分大小写，MySQL 8.0 默认是 `utf8mb4_0900_ai_ci`，同样不区分）在比较字符串时**不区分大小写**，所以 `where name='luke'` 也能匹配到 `'Luke'`、`'LUKE'`。
+>
+> 如果需要**区分大小写**地精确匹配，要在**字段名前**加上 `binary` 关键字，让 MySQL 按二进制（逐字节）比较字符串。
+>
+> `binary` 同样适用于 `update`、`delete` 的 `where` 条件，用来精确定位记录。
+
+```sql
+-- 不加 binary：默认不区分大小写，'luke'、'Luke'、'LUKE' 都会被匹配
+select * from students where name='luke';
+-- 加 binary：按二进制比较，只匹配全小写的 'luke'
+-- binary 写在字段名前面，表示把 name 的值当作二进制字符串来比较
+select * from students where binary name='luke';
+-- 在 update 中使用：只把姓名恰好为 'luke'（区分大小写）的记录改为 'lily'
+-- set 指定新值；where binary name='luke' 限定只修改大小写完全一致的记录
+update students set name='lily' where binary name='luke';
+```
+
+> **注意**：`binary` 作用在字段上后，该字段的索引通常无法被使用，大表中要谨慎使用。
+>
+> **版本说明**：自 MySQL 8.0.27 起，`binary` 运算符已被标记为**弃用**（仍可使用，但未来版本可能移除），官方推荐改用 `cast(字段 as binary)`，例如 `where cast(name as binary)='luke'`（注意此时 `'luke'` 也按二进制比较，结果与 `binary name='luke'` 一致）；也可以直接把字段的排序规则改为 `_bin` 结尾（如 `utf8mb4_bin`）。
+
 ---
 
 ## 十、排序
