@@ -1366,6 +1366,30 @@ select sum(age)/count(*) from students where gender=1;
 select avg(id) from students where is_delete=0 and gender=2;
 ```
 
+> **补充：常用数值函数**。聚合结果（如 `avg`）常带很多小数，可以配合下面的**数值函数**处理。它们是**单行函数**：对每一行（或一个值）计算并返回一个值，**不是**聚合函数。
+>
+> ---
+
+| 函数 | 含义 | 示例 |
+| --- | --- | --- |
+| `round(x)` | 四舍五入到整数 | `round(3.56)` 得 `4`；`round(-3.5)` 得 `-4`（精确数值按“远离 0”舍入） |
+| `round(x, d)` | 四舍五入保留 `d` 位小数；`d` 为负数时对整数部分舍入 | `round(3.1415, 2)` 得 `3.14`；`round(1234, -2)` 得 `1200` |
+| `ceil(x)` / `ceiling(x)` | **向上取整**：返回**不小于** `x` 的最小整数 | `ceil(3.1)` 得 `4`；`ceil(-3.1)` 得 `-3` |
+| `floor(x)` | **向下取整**：返回**不大于** `x` 的最大整数 | `floor(3.9)` 得 `3`；`floor(-3.1)` 得 `-4` |
+
+> ---
+>
+> **注意**：`ceil` 与 `floor` 针对负数时方向不同于“去掉小数部分”：`ceil(-3.1)` 是 `-3`，`floor(-3.1)` 是 `-4`。
+
+```sql
+-- 例 6：男生平均年龄，保留 2 位小数
+-- avg(age) 先求平均值，round(..., 2) 再四舍五入保留 2 位小数
+select round(avg(age), 2) from students where gender=1;
+-- 例 7：男生平均年龄向上取整、向下取整
+-- ceil：向上取整；floor：向下取整；结果的小数部分都为 0（精确数值参数返回整数类型，浮点参数则返回浮点类型）
+select ceil(avg(age)), floor(avg(age)) from students where gender=1;
+```
+
 ---
 
 ## 十二、分组
