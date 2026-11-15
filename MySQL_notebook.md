@@ -1626,6 +1626,7 @@ select * from students limit 10,5;
 > - `on` 后面是**连接条件**（两张表通过哪一列对应起来）
 > - 多表查询时，常用 `as` 给表起别名，目的是编写简单；同名列要用 `表名.列名`（或 `别名.列名`）区分
 > - `inner` 可以省略，直接写 `join`
+> - 连接查询可以继续使用 `where` 对连接后的结果进行过滤，`where` 必须写在 **`on` 之后**，即书写顺序为 `from ... join ... on ... where ...`；同样，`group by`、`having`、`order by`、`limit` 也写在 `where` 之后
 >
 > 记忆方式：以**左表**（写在 `join` 前面的）为主 → `left join`，左表的所有行都保留；以**右表**为主 → `right join`。
 >
@@ -1648,7 +1649,18 @@ select * from students as s right join classes as c on s.cls_id = c.id;
 -- 例 4：查询学生姓名及班级名称（只选部分列，两个表都有 name 列，必须用别名区分）
 -- s.name 是学生姓名，c.name 是班级名称，结果为 2 列：学生姓名、班级名称
 select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id;
+
+-- 例 5：连接查询配合 where，查询 python01 班的学生姓名
+-- 书写顺序：先 join ... on 确定连接条件，where 写在 on 之后，对连接后的结果再过滤
+select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id where c.name = 'python01';
+
+-- 例 6：左连接配合 where，查询没有分配班级的学生
+-- left join 会保留学生表所有行，没有匹配到班级的学生，其班级列（如 c.id）为 NULL
+-- where c.id is null 在连接之后过滤出这些行；判空要用 is null，不能写 = null
+select s.name from students as s left join classes as c on s.cls_id = c.id where c.id is null;
 ```
+
+> **`on` 与 `where` 的区别**：`on` 决定**两张表如何匹配**，`where` 对**连接后的结果**再做过滤。
 
 ---
 
