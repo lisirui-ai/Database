@@ -1404,9 +1404,9 @@ select ceil(avg(age)), floor(avg(age)) from students where gender=1;
 select gender from students group by gender;
 ```
 
-> 当 `group by` **单独使用**时，只显示出每组的第一条记录（去重效果），实际意义不大。**分组通常要配合聚合函数、`group_concat()`、`having`、`with rollup` 使用**。
+> 当 `group by` **单独使用**（不配合聚合函数）时，每个分组只输出**一行**，效果相当于对分组列**去重**（与 `select distinct gender from students;` 等价），实际意义不大。**分组通常要配合聚合函数、`group_concat()`、`having`、`with rollup` 使用**。
 >
-> **重要规则**：`select` 后面出现的列，要么出现在 `group by` 中，要么放在聚合函数里；否则在默认的 `ONLY_FULL_GROUP_BY` 模式下（8.0 默认开启）会报错。
+> **重要规则**：`select` 后面出现的列，要么出现在 `group by` 中，要么放在聚合函数里；否则在默认的 `ONLY_FULL_GROUP_BY` 模式下（MySQL 5.7 起默认开启）会报错。
 
 ### 12.2 `group by` + `group_concat()`
 
