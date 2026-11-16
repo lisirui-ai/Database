@@ -1313,6 +1313,34 @@ update students set name='lily' where binary name='luke';
 >
 > **版本说明**：自 MySQL 8.0.27 起，`binary` 运算符已被标记为**弃用**（仍可使用，但未来版本可能移除），官方推荐改用 `cast(字段 as binary)`，例如 `where cast(name as binary)='luke'`（注意此时 `'luke'` 也按二进制比较，结果与 `binary name='luke'` 一致）；也可以直接把字段的排序规则改为 `_bin` 结尾（如 `utf8mb4_bin`）。
 
+### 9.8 行构造器（多列比较）
+
+> **行构造器（Row Constructor）**：把多个列或多个值用小括号组合成一个“**行**”（元组），再整体做比较。写法：`(列1, 列2) 运算符 (值1, 值2)`。
+>
+> - 用 `=`：按**位置**逐列比较，等价于 `列1=值1 and 列2=值2`
+> - 用 `in`：判断当前行是否等于列表中的**任意一行**，等价于多组 `and` 再用 `or` 连接
+> - 两边的**列数必须一致**，否则报错 `Operand should contain 2 column(s)`
+> - 用 `<`、`>` 比较时是**字典序**：先比第一列，第一列相等才比第二列，**不是**每列各自比较
+
+```sql
+-- 例 16：查询身高为 180 且年龄为 20 的学生
+-- (height, age) 是行元素，与 (180, 20) 按位置逐列比较：height=180 and age=20
+select * from students where (height, age) = (180, 20);
+-- 等价写法：用 and 连接两个条件
+select * from students where height = 180 and age = 20;
+-- 例 17：查询 (身高, 年龄) 为 (180, 20) 或 (170, 18) 的学生
+-- in 后面是多个行元素组成的列表，当前行等于其中任意一行即保留
+select * from students where (height, age) in ((180, 20), (170, 18));
+-- 例 18：字典序比较：先比 height，height 相等时才比 age
+-- 等价于 height > 170 or (height = 170 and age > 18)
+select * from students where (height, age) > (170, 18);
+```
+
+> **说明**：
+>
+> - 行构造器右边除了常量，还可以是**行子查询**（返回一行多列）或 `in` 后的**列子查询**（返回多行多列），详见 [17.3 行子查询](#173-行子查询)。
+> - 行构造器的 `in (子查询)` 在大数据量时，性能有时不如 `exists` 或连接查询，必要时可改写。
+
 ---
 
 ## 十、排序
@@ -1779,7 +1807,7 @@ select name from classes where id in (select cls_id from students);
 
 > 需求：查找班级中**年龄最大、身高最高**的学生。
 >
-> **行元素**：将多个字段合成一个**行元素**（如 `(height, age)`），在行子查询中使用。
+> **行元素**：将多个字段合成一个**行元素**（如 `(height, age)`），在行子查询中使用。行元素的基本语法见 [9.8 行构造器（多列比较）](#98-行构造器多列比较)。
 
 ```sql
 -- 子查询返回一行两列 (最大身高, 最大年龄)，主查询用行元素 (height, age) 与它比较
