@@ -28,14 +28,14 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 | 五   | 数据库与数据表操作（DDL）：库的创建/删除、表的创建/修改/删除、查看表结构 |
 | 六   | 数据增删改（DML）：insert、update、delete、逻辑删除、备份与恢复 |
 | 七   | 数据库设计：三范式、E-R 模型、三种对应关系与外键 |
-| 八 | 基础查询：查询列、别名、去重 |
+| 八 | 基础查询：查询列、别名、去重、基础查询的进阶用法 |
 | 九 | 条件查询：比较运算符、逻辑运算符、模糊查询、范围查询、空判断、优先级 |
 | 十 | 排序：order by、asc/desc、多列排序 |
 | 十一 | 聚合函数：count、max、min、sum、avg |
 | 十二 | 分组：group by、group_concat、having、with rollup |
 | 十三 | 窗口函数（8.0 新增）：rank、dense_rank、row_number |
 | 十四 | 分页：limit、总页数与第 n 页的计算 |
-| 十五 | 连接查询：内连接、左连接、右连接 |
+| 十五 | 连接：连接查询（内连接、左连接、右连接）、连接更新（`update ... join`） |
 | 十六 | 自关联：省市区数据的单表设计 |
 | 十七 | 子查询：标量、列、行子查询 |
 | 十八 | SELECT 完整语法与执行顺序 |
@@ -1133,7 +1133,7 @@ select students.id, students.name, students.gender from students;
 -- 通过 as 给表起别名：from 表名 as 别名；之后用别名 s 引用该表，写起来更简短
 select s.id, s.name, s.gender from students as s;
 
--- 多表查询：students 和 classes 通过 inner join 连接，on 指定两表的对应关系（连接的用法详见第十五章，这里只关注列名怎么写）
+-- 多表查询：students 和 classes 通过 inner join 连接，on 指定两表的对应关系（连接的用法详见 15.1 连接查询，这里只关注列名怎么写）
 -- students 和 classes 都有 name 列，只写 name 会报错：Column 'name' in field list is ambiguous（列有歧义）
 -- 必须写成 表名.列名，指明 name 来自哪张表：students.name 是学生姓名，classes.name 是班级名称
 select students.name, classes.name from students inner join classes on students.cls_id = classes.id;
@@ -1141,7 +1141,7 @@ select students.name, classes.name from students inner join classes on students.
 select s.name, c.name from students as s inner join classes as c on s.cls_id = c.id;
 ```
 
-> **为什么要写表名或别名**：查询涉及多张表时（详见第十五章“连接查询”），如果不同的表有同名的列（如 `students.name` 和 `classes.name`），只写 `name` 会因为有歧义而报错，必须用 `表名.列名` 或 `别名.列名` 指明来自哪张表。单表查询没有这个问题，所以可以省略。
+> **为什么要写表名或别名**：查询涉及多张表时（详见 15.1 连接查询），如果不同的表有同名的列（如 `students.name` 和 `classes.name`），只写 `name` 会因为有歧义而报错，必须用 `表名.列名` 或 `别名.列名` 指明来自哪张表。单表查询没有这个问题，所以可以省略。
 
 ### 8.3 消除重复行（`distinct`）
 
@@ -1687,7 +1687,26 @@ select * from students limit 10,5;
 
 ---
 
-## 十五、连接查询
+## 十五、连接
+
+> **什么是连接**：**连接（join）** 是指把**两张（或多张）表**，按照指定的**连接条件**，将两边满足条件的行**组合**在一起，形成一个更大的数据集。
+>
+> **为什么需要连接**：关系型数据库为了减少数据冗余，会按照数据库设计的原则（见第七章）把数据**拆分到多张表**中，表与表之间通过**关联列**对应起来。例如学生表 `students` 只保存班级编号 `cls_id`，班级名称保存在班级表 `classes` 中，二者通过 `students.cls_id = classes.id` 对应。当需要同时使用多张表的数据时，就要先通过连接把它们**重新组合**起来。
+>
+> **连接的组成**：
+>
+> - **参与连接的表**：写在 `join` 前后，分别称为**左表**和**右表**
+> - **连接条件**：写在 `on` 之后，通常是“一张表的外键列 = 另一张表的主键列”，决定两张表的行**如何一一对应**
+> - **连接类型**：决定匹配不上的行如何处理，分为内连接、左连接、右连接（详见 15.1）
+>
+> **注意**：连接时**通常不应省略连接条件**。如果两张表组合时没有任何条件限制，结果会是两张表所有行的**两两组合**（称为**笛卡尔积**），行数是两表行数相乘，多数情况下既没有意义，也会严重影响性能。
+>
+> **本章内容**：连接的作用是“把多张表组合成一个数据集”，组合之后既可以用来**查询**，也可以用来**修改**数据：
+>
+> - **15.1 连接查询**：用连接后的数据集进行查询，返回需要的列
+> - **15.2 连接更新**：用连接后匹配到的数据，修改其中一张表的数据
+
+### 15.1 连接查询
 
 > 当查询结果的**列来源于多张表**时，需要将多张表**连接**成一个大的数据集，再选择合适的列返回。
 >
@@ -1744,7 +1763,7 @@ select s.name from students as s left join classes as c on s.cls_id = c.id where
 
 > **`on` 与 `where` 的区别**：`on` 决定**两张表如何匹配**，`where` 对**连接后的结果**再做过滤。
 
-### 15.1 连接更新（`update ... join`）
+### 15.2 连接更新（`update ... join`）
 
 > 连接不仅能用于查询，还能用于**修改数据**：先把两张表连接起来，再用连接后匹配到的另一张表的数据去修改其中一张表。
 >
