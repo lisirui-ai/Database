@@ -2041,7 +2041,7 @@ insert into classes(name) values('python1') on duplicate key update name = 'pyth
 
 ### 18.3 `update` 完整语法与执行顺序
 
-> `update` 分为**单表**和**多表（连接）**两种形式。
+> `update` 分为**单表**和 **多表（连接）** 两种形式。
 
 ```sql
 -- 单表 update：修改一张表中满足条件的行
@@ -2089,7 +2089,7 @@ update students as s inner join classes as c on s.cls_id = c.id set s.age = 20 w
 
 ### 18.4 `delete` 完整语法与执行顺序
 
-> `delete` 同样分为**单表**和**多表（连接）**两种形式。
+> `delete` 同样分为**单表**和 **多表（连接）** 两种形式。
 
 ```sql
 -- 单表 delete：删除一张表中满足条件的行
