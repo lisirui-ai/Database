@@ -1742,6 +1742,41 @@ select s.name from students as s left join classes as c on s.cls_id = c.id where
 
 > **`on` 与 `where` 的区别**：`on` 决定**两张表如何匹配**，`where` 对**连接后的结果**再做过滤。
 
+### 15.1 连接更新（`update ... join`）
+
+> 连接不仅能用于查询，还能用于**修改数据**：先把两张表连接起来，再用连接后匹配到的另一张表的数据去修改其中一张表。
+>
+> 格式：`UPDATE 表1 [as 别名1] INNER JOIN 表2 [as 别名2] ON 连接条件 SET 表1.列 = 表2.列 [, ...] [WHERE 条件]`
+>
+> - `set` 后面的列建议写成 `别名.列名`，明确是修改哪张表的哪一列；两张表有同名列时必须这样写，否则会报列名不明确的错误
+> - 使用 `inner join` 时，只有两张表**匹配上的行**才会被修改，匹配不上的行保持不变
+> - 常用于**拆表之后**，把原表中的**名称**替换成对应的**编号**，使原表通过编号关联新表（先用 [6.2.1](#621-插入查询结果insert--select) 或 [6.2.2](#622-建表时插入查询结果create-table--select) 把去重后的名称提取到新表，每个名称得到一个 `id`，再用本语句替换）
+> - `join` 也可以换成 `left join`，此时左表（被修改的表）所有行都会参与更新，匹配不到的行，`set` 右边的值为 `NULL`
+>
+> 例：`goods` 表中的 `brand_name` 列目前保存的是品牌名称，用 `goods_brands` 表（含 `id`、`name` 列）把它替换成品牌编号 `id`。
+
+```sql
+-- 连接更新：把 goods 表的品牌名称替换成 goods_brands 表中对应的品牌编号
+-- update goods as g：指定要修改的表是 goods，别名 g
+update goods as g
+-- inner join ... on：与 goods_brands（别名 b）连接，连接条件是商品的品牌名称等于品牌表的 name
+-- 只有在品牌表中能找到同名品牌的商品才会被修改
+inner join goods_brands as b on g.brand_name = b.name
+-- set：把 goods 的 brand_name 列修改为匹配到的品牌表的 id；左边写 g.brand_name 指明修改的是 goods 的列
+set g.brand_name = b.id;
+
+-- 等价写法：不写 join，两张表用逗号并列，连接条件放在 where 中，效果相同
+update goods as g, goods_brands as b
+set g.brand_name = b.id
+where g.brand_name = b.name;
+```
+
+> **注意**：
+>
+> - 如果 `brand_name` 是 `varchar` 类型，而 `b.id` 是数字，更新后保存的是**数字形式的字符串**（如 `'1'`），之后通常还要用 `alter table` 把该列改为整型（并可改名为 `brand_id`），才能真正作为编号使用。
+> - 多表连接形式的 `update` **不能**使用 `order by` 和 `limit`。
+> - **务必确认连接条件正确**，条件写错会把不该修改的行也改掉。
+
 ---
 
 ## 十六、自关联
