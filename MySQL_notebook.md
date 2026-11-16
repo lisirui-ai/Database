@@ -38,7 +38,7 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 | 十五 | 连接：连接查询（内连接、左连接、右连接）、连接更新（`update ... join`） |
 | 十六 | 自关联：省市区数据的单表设计 |
 | 十七 | 子查询：标量、列、行子查询 |
-| 十八 | SELECT 完整语法与执行顺序 |
+| 十八 | DML（增删查改）的完整语法与执行顺序：select、insert、update、delete |
 | 十九 | 视图：定义、使用、删除与作用 |
 | 二十 | 事务：ACID 特性、事务命令、回滚与提交演示、隔离级别 |
 | 二十一 | 索引：原理、使用、性能对比、注意事项 |
@@ -1940,9 +1940,11 @@ where (height, age) = (select max(height), max(age) from students);
 
 ---
 
-## 十八、SELECT 完整语法与执行顺序
+## 十八、DML（增删查改）的完整语法与执行顺序
 
-### 18.1 完整语法
+> 本章汇总 `select`（查）、`insert`（增）、`update`（改）、`delete`（删）四类语句的**完整语法**，并说明各语句中子句的**执行顺序**。各语句中大部分子句都是**可选**的，实际使用时通常只选用其中若干部分组合。
+
+### 18.1 `select` 完整语法与执行顺序
 
 > `select` 语句的完整格式如下。其中大部分子句均为**可选**，**实际使用时通常只选用其中若干子句组合，而不需要全部使用**：
 
@@ -1954,8 +1956,8 @@ SELECT [DISTINCT] select_expr [, select_expr, ...]
 [FROM tb_name]
 -- WHERE：对原始行过滤的条件
 [WHERE 条件判断]
--- GROUP BY：按列名 col_name 或列的位置序号 position 分组，可指定 ASC 升序 / DESC 降序
-[GROUP BY {col_name | position} [ASC | DESC], ...]
+-- GROUP BY：按列名 col_name 或列的位置序号 position 分组（MySQL 8.0.13 起不再支持在 GROUP BY 后写 ASC / DESC，排序请用 ORDER BY）
+[GROUP BY {col_name | position}, ...]
 -- HAVING：对分组之后的结果过滤的条件
 [HAVING 条件判断]
 -- ORDER BY：按列名、表达式 expr 或位置序号排序，ASC 升序（默认）/ DESC 降序
@@ -1980,9 +1982,7 @@ order by ...
 limit start, count
 ```
 
-### 18.2 执行顺序
-
-> 各个子句的**书写顺序**与**执行顺序**不同：书写时 `select` 在最前，但它是在分组、`having` 之后才执行的。**正确的执行顺序**为：
+> **执行顺序**：各个子句的**书写顺序**与**执行顺序**不同：书写时 `select` 在最前，但它是在分组、`having` 之后才执行的。**正确的执行顺序**为：
 >
 > ---
 
@@ -1999,6 +1999,147 @@ limit start, count
 > ---
 >
 > **说明**：`select`（含 `distinct`）是在 `having` **之后**才执行的，书写顺序与执行顺序不同。理解这一点可以解释一些现象，例如：`where` 中不能使用 `select` 中定义的聚合结果；`order by` 中可以使用别名（因为它在 `select` 之后执行）。
+
+### 18.2 `insert` 完整语法与执行顺序
+
+> `insert` 有三种形式：`values` 形式、`set` 形式、`select` 形式。完整格式如下：
+
+```sql
+-- [ ] 表示可选部分，| 表示多选一，实际书写时不要写出方括号和竖线
+-- INSERT：必写；INTO 可省略；IGNORE 可选，表示把执行中遇到的部分错误降级为警告，不终止整条语句（出错的行会被跳过，或值被自动调整）
+-- tb_name 是要插入数据的表名；(col_name, ...) 是要赋值的列，省略时表示全列，值要与表中所有列的顺序一一对应
+INSERT [IGNORE] [INTO] tb_name [(col_name, ...)]
+-- 形式 1：values 形式，手写数据；一次可以写多组值（多行插入），DEFAULT 表示使用该列的默认值
+{VALUES | VALUE} ({expr | DEFAULT}, ...) [, ({expr | DEFAULT}, ...), ...]
+-- 形式 2：select 形式，数据来自查询结果（见 8.4），列数要与前面的列一致
+-- 以上两种形式二选一
+-- SELECT ...
+-- ON DUPLICATE KEY UPDATE：可选（三种形式都可以使用）；插入的行会导致主键或唯一索引冲突时，不报错，而是改为执行后面的更新
+[ON DUPLICATE KEY UPDATE col_name = expr [, col_name = expr, ...]];
+
+-- 形式 3：set 形式，用“列 = 值”的方式给列赋值，一次只能插入一行
+INSERT [IGNORE] [INTO] tb_name SET col_name = {expr | DEFAULT} [, col_name = {expr | DEFAULT}, ...];
+```
+
+```sql
+-- 例 1：values 形式（见 6.2）：全列插入，id 用 0 占位自动生成
+insert into students values(0, '郭靖', 20, 181.00, '男', 1, '2016-1-2');
+-- 例 2：set 形式：用“列 = 值”给指定列赋值，没写的列使用默认值
+insert into students set name = '黄蓉', age = 18;
+-- 例 3：select 形式（见 8.4）：把查询结果插入另一张表
+insert into goods_cates(name) select distinct cate_name from goods;
+-- 例 4：on duplicate key update：假设 classes 表的 name 列有唯一索引
+-- 如果 'python1' 已存在，不会报重复键错误，而是改为执行 update 部分，把该班级的 name 重新赋值（此例值不变，仅演示写法）
+insert into classes(name) values('python1') on duplicate key update name = 'python1';
+```
+
+> **执行顺序**：
+>
+> - **`values` 形式、`set` 形式**：没有查询和过滤子句，按给出的值直接写入；写入时会检查类型、非空、主键和唯一约束等，不满足则报错（使用 `ignore` 时，部分错误降级为警告，出错的行被跳过或值被自动调整）
+> - **`select` 形式**：**先执行 `select`**（其内部的子句顺序见 18.1），得到结果集，**再把结果集逐行写入**目标表
+> - **`on duplicate key update`**：先尝试插入，**只有发生主键或唯一索引冲突时**才执行后面的更新，不冲突则正常插入
+
+### 18.3 `update` 完整语法与执行顺序
+
+> `update` 分为**单表**和**多表（连接）**两种形式。
+
+```sql
+-- 单表 update：修改一张表中满足条件的行
+-- UPDATE：必写；IGNORE 可选，表示把执行中遇到的部分错误降级为警告，不终止整条语句
+-- SET：必写；列 = 值，多个用逗号分隔；DEFAULT 表示改为该列的默认值
+UPDATE [IGNORE] tb_name SET col_name = {expr | DEFAULT} [, col_name = {expr | DEFAULT}, ...]
+-- WHERE：可选；筛选要修改的行，不写则修改全表
+[WHERE 条件判断]
+-- ORDER BY：可选；指定修改行的顺序，通常配合 LIMIT 使用
+[ORDER BY {col_name | expr} [ASC | DESC], ...]
+-- LIMIT：可选；最多修改的行数 row_count
+[LIMIT row_count];
+
+-- 多表 update：先连接多张表（见 15.2），再修改其中一张或多张表
+-- table_references：多表连接的写法，如 表1 INNER JOIN 表2 ON 条件
+-- 多表形式不能使用 ORDER BY 和 LIMIT
+UPDATE [IGNORE] table_references SET tb_name.col_name = {expr | DEFAULT} [, ...] [WHERE 条件判断];
+```
+
+```sql
+-- 例 1：单表 update（见 6.3）：把 id 为 5 的学生性别改为 2（枚举序号 2，即 '女'）
+update students set gender = 2 where id = 5;
+-- 例 2：单表 update 配合 order by + limit：把身高最高的 3 名学生的年龄改为 20
+-- 没有 where，所以对全表排序：先按身高降序排序，取前 3 行，最后修改这 3 行
+update students set age = 20 order by height desc limit 3;
+-- 例 3：多表 update（见 15.2）：把 python01 班所有学生的年龄改为 20
+-- 先用 inner join 连接学生表和班级表，再用 where 过滤出 python01 班，最后修改学生表 s 的 age
+update students as s inner join classes as c on s.cls_id = c.id set s.age = 20 where c.name = 'python01';
+```
+
+> **执行顺序（单表形式）**：
+>
+> ---
+
+| 顺序 | 子句 | 作用 |
+| --- | --- | --- |
+| 1 | `where ...` | 筛选出要修改的行 |
+| 2 | `order by ...` | 对筛选出的行排序 |
+| 3 | `limit n` | 在排序后的结果中最多取 `n` 行 |
+| 4 | `set ...` | 对最终选中的行执行修改 |
+
+> ---
+>
+> **说明**：`order by` 单独使用没有意义，它的作用是决定 `limit` **取哪几行**。多表形式先完成连接和 `where` 过滤，再对匹配到的行执行 `set`。
+
+### 18.4 `delete` 完整语法与执行顺序
+
+> `delete` 同样分为**单表**和**多表（连接）**两种形式。
+
+```sql
+-- 单表 delete：删除一张表中满足条件的行
+-- DELETE FROM：必写；tb_name 是要删除数据的表名
+DELETE FROM tb_name
+-- WHERE：可选；筛选要删除的行，不写则删除全表数据
+[WHERE 条件判断]
+-- ORDER BY：可选；指定删除行的顺序，通常配合 LIMIT 使用
+[ORDER BY {col_name | expr} [ASC | DESC], ...]
+-- LIMIT：可选；最多删除的行数 row_count
+[LIMIT row_count];
+
+-- 多表 delete：先连接多张表，再从 DELETE 与 FROM 之间列出的表中删除匹配到的行
+-- DELETE 后面写要删除数据的表（可以是一张或多张）；FROM 后面是多表连接的写法 table_references
+-- 多表形式不能使用 ORDER BY 和 LIMIT
+DELETE tb_name [, tb_name, ...] FROM table_references [WHERE 条件判断];
+```
+
+```sql
+-- 例 1：单表 delete（见 6.4）：删除 id 为 5 的学生
+delete from students where id = 5;
+-- 例 2：单表 delete 配合 order by + limit：删除身高最低的 2 名学生
+-- 先按身高升序排序，取前 2 行，再删除这 2 行（height 为 NULL 的行在升序时排在最前，要注意）
+delete from students order by height asc limit 2;
+-- 例 3：多表 delete：删除属于 python01 班的所有学生
+-- delete s：只从学生表 s 中删除数据，班级表 c 只用来参与连接和过滤，其中的数据不会被删除
+delete s from students as s inner join classes as c on s.cls_id = c.id where c.name = 'python01';
+```
+
+> **执行顺序（单表形式）**：与 `update` 相同，**`where` → `order by` → `limit` → 删除**。
+>
+> **注意**：多表 `delete` 中，**只有写在 `delete` 与 `from` 之间的表**才会被删除数据，其余表只参与连接和过滤。
+
+### 18.5 小结：各语句的子句对比
+
+> 下表汇总四类语句**能否使用**各个子句（“✔”表示可以使用，“—”表示不能使用）：
+>
+> ---
+
+| 子句 | `select` | `insert` | `update`（单表） | `update`（多表） | `delete`（单表） | `delete`（多表） |
+| --- | --- | --- | --- | --- | --- | --- |
+| `where` | ✔ | — | ✔ | ✔ | ✔ | ✔ |
+| `group by` / `having` | ✔ | — | — | — | — | — |
+| `order by` | ✔ | — | ✔ | — | ✔ | — |
+| `limit` | ✔ | — | ✔ | — | ✔ | — |
+| 连接（`join`） | ✔ | — | — | ✔ | — | ✔ |
+
+> ---
+>
+> **说明**：`insert ... select` 中，其内部的 `select` 部分可以使用 `select` 的所有子句。
 
 ---
 
