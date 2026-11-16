@@ -867,6 +867,29 @@ insert into classes values(0,'python1'),(0,'python2');
 insert into students(name) values('杨康'),('杨过'),('小龙女');
 ```
 
+#### 6.2.1 插入查询结果（`insert ... select`）
+
+> 除了用 `values` 手写数据，还可以把 **`select` 查询的结果直接插入另一张表**，常用于把一张表中重复出现的内容（如商品分类）**拆分**成单独的表。
+>
+> 格式：`INSERT [INTO] 表名 [(列名,...)] SELECT ...`
+>
+> - 不写 `values`，由后面的 `select` 语句提供要插入的数据，`select` 返回多少行就插入多少行
+> - `insert` 的列和 `select` 返回的列按**位置**一一对应，**列数必须一致**，类型要兼容；名字不要求相同
+> - 没有列出的列（如自增的 `id`）使用默认值或自动生成
+> - `select` 部分可以使用 `where`、`distinct`、`group by` 等查询子句，`distinct` 的用法见 [8.3 消除重复行](#83-消除重复行distinct)
+>
+> 例：假设有商品表 `goods`（含分类名称列 `cate_name`）和分类表 `goods_cates`（含自增主键 `id` 和 `name` 列）。
+
+```sql
+-- 将 goods 表中的分类名称提取出来，并去重，插入到 goods_cates 表中
+-- insert into goods_cates(name)：指定要插入的目标表和列，只给 name 列赋值，id 自动增长
+-- 没有 values 子句，数据来自下面的 select
+insert into goods_cates(name)
+-- select distinct cate_name：从 goods 表取出 cate_name 列并去重，得到一列不重复的分类名
+-- 返回的这一列按位置对应插入到 name 列，每个分类名插入一行
+select distinct cate_name from goods;
+```
+
 ### 6.3 修改数据（update）
 
 > 格式：`UPDATE 表名 SET 列1={值1|DEFAULT} [,列2={值2|DEFAULT}]... [WHERE 条件]`
