@@ -890,6 +890,36 @@ insert into goods_cates(name)
 select distinct cate_name from goods;
 ```
 
+#### 6.2.2 建表时插入查询结果（`create table ... select`）
+
+> 在 `create table` 语句的末尾接一条 `select`，可以**建表的同时把查询结果插入新表**，一条语句完成“建表 + 灌数据”。
+>
+> 格式：`CREATE TABLE 表名 [(列定义,...)] SELECT ...`
+>
+> - 括号里的列定义可以省略：省略时，新表的列名和类型由 `select` 的结果**自动推断**，**不会带有**主键、自增等约束
+> - 写了列定义时，可以自己指定类型、主键、自增等约束；`select` 返回的列按**列名**匹配到新表的同名列，所以要用 `as` 起**别名**，让它与新表的列名一致
+> - 与 [6.2.1 `insert ... select`](#621-插入查询结果insert--select) 的区别：`insert ... select` 按**位置**对应，`create table ... select` 按**列名**对应
+> - 新表中没有被 `select` 填充的列（如自增的 `id`）使用默认值或自动生成
+> - 如果 `select` 的列名在新表中**找不到同名列**，MySQL 不会报错，而是在新表中**额外增加**这一列，容易产生多余的列，要注意别名是否写对
+>
+> 例：假设商品表 `goods` 中有品牌名称列 `brand_name`，用它创建品牌表 `goods_brands`。
+
+```sql
+-- 创建品牌表 goods_brands，并把 goods 表中去重后的品牌名称插入进去
+create table goods_brands(
+    -- id：无符号整型，主键，自动增长，不为空；select 中没有 id，所以由自增自动生成
+    id int unsigned primary key auto_increment not null,
+    -- name：品牌名称，最多 40 个字符，不为空；select 中别名为 name 的列会填入这一列
+    name varchar(40) not null
+-- 右括号结束列定义，后面直接接 select，表示建表后把查询结果插入新表
+-- select distinct brand_name as name：取出品牌名并去重，as name 起别名，与新表的 name 列同名才能对应
+) select distinct brand_name as name from goods;
+
+-- 省略列定义：新表的列名和类型由 select 的结果推断，不带主键、自增等约束
+create table goods_brands2
+select distinct brand_name as name from goods;
+```
+
 ### 6.3 修改数据（update）
 
 > 格式：`UPDATE 表名 SET 列1={值1|DEFAULT} [,列2={值2|DEFAULT}]... [WHERE 条件]`
