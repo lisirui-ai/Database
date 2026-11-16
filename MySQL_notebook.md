@@ -1952,8 +1952,9 @@ where (height, age) = (select max(height), max(age) from students);
 -- [ ] 表示可选部分，| 表示多选一，实际书写时不要写出方括号
 -- SELECT：必写；DISTINCT 可选，表示去重；select_expr 是要查询的列或表达式，多个用逗号分隔
 SELECT [DISTINCT] select_expr [, select_expr, ...]
--- FROM：指定数据来源的表名 tb_name（可以是多表连接）
-[FROM tb_name]
+-- FROM：指定数据来源；table_references 可以是单个表名，也可以是多表连接的写法（见 15.1）
+-- 多表连接的写法：表1 [INNER | LEFT | RIGHT] JOIN 表2 ON 连接条件，可以继续连接更多的表
+[FROM table_references]
 -- WHERE：对原始行过滤的条件
 [WHERE 条件判断]
 -- GROUP BY：按列名 col_name 或列的位置序号 position 分组（MySQL 8.0.13 起不再支持在 GROUP BY 后写 ASC / DESC，排序请用 ORDER BY）
@@ -1970,7 +1971,7 @@ SELECT [DISTINCT] select_expr [, select_expr, ...]
 -- 完整的 select 语句示例骨架（... 表示此处写具体内容）
 -- select distinct *：查询所有列并去重
 select distinct *
--- from 表名：数据来源
+-- from 表名：数据来源，多表时写成 from 表1 join 表2 on 连接条件
 from 表名
 -- where：原始行的过滤条件
 where ....
@@ -2129,13 +2130,13 @@ delete s from students as s inner join classes as c on s.cls_id = c.id where c.n
 >
 > ---
 
-| 子句 | `select` | `insert` | `update`（单表） | `update`（多表） | `delete`（单表） | `delete`（多表） |
-| --- | --- | --- | --- | --- | --- | --- |
-| `where` | ✔ | — | ✔ | ✔ | ✔ | ✔ |
-| `group by` / `having` | ✔ | — | — | — | — | — |
-| `order by` | ✔ | — | ✔ | — | ✔ | — |
-| `limit` | ✔ | — | ✔ | — | ✔ | — |
-| 连接（`join`） | ✔ | — | — | ✔ | — | ✔ |
+| 子句 | `select`（单表） | `select`（多表） | `insert` | `update`（单表） | `update`（多表） | `delete`（单表） | `delete`（多表） |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `where` | ✔ | ✔ | — | ✔ | ✔ | ✔ | ✔ |
+| `group by` / `having` | ✔ | ✔ | — | — | — | — | — |
+| `order by` | ✔ | ✔ | — | ✔ | — | ✔ | — |
+| `limit` | ✔ | ✔ | — | ✔ | — | ✔ | — |
+| 连接（`join`） | — | ✔ | — | — | ✔ | — | ✔ |
 
 > ---
 >
