@@ -2237,6 +2237,22 @@ delete s from students as s inner join classes as c on s.cls_id = c.id where c.n
 
 ### 19.3 视图的使用
 
+> **视图的完整语法**（`[ ]` 表示可选，`|` 表示二选一）：
+>
+> - **创建 / 替换视图**：
+>   `CREATE [OR REPLACE] [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}] [DEFINER = 用户] [SQL SECURITY {DEFINER | INVOKER}] VIEW 视图名称 [(列名列表)] AS SELECT 语句 [WITH [CASCADED | LOCAL] CHECK OPTION];`
+>   - `OR REPLACE`：视图已存在则替换其定义，不存在则创建
+>   - `ALGORITHM`：视图的处理算法，`MERGE` 将视图语句合并到外层查询，`TEMPTABLE` 先把结果存入临时表，`UNDEFINED`（默认）由 MySQL 自行选择
+>   - `DEFINER` / `SQL SECURITY`：指定视图的定义者及执行时使用的权限（定义者权限或调用者权限）
+>   - `(列名列表)`：显式指定视图的列名，不写则使用 `SELECT` 中的列名或别名（`AS`）
+>   - `WITH CHECK OPTION`：对可更新视图进行 `INSERT`/`UPDATE` 时，要求新数据必须满足视图的 `WHERE` 条件；`CASCADED`（默认）同时检查所依赖的其他视图，`LOCAL` 只检查当前视图
+> - **修改视图**：`ALTER [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}] [DEFINER = 用户] [SQL SECURITY {DEFINER | INVOKER}] VIEW 视图名称 [(列名列表)] AS SELECT 语句 [WITH [CASCADED | LOCAL] CHECK OPTION];`，修改已存在视图的定义，各子句含义与 `CREATE VIEW` 相同
+> - **查看视图**：`SHOW TABLES;` 会连同视图一起列出；`SHOW CREATE VIEW 视图名称;` 查看视图的创建语句
+> - **使用视图**：`SELECT 列名 FROM 视图名称 [WHERE 条件];`，用法与普通表的查询相同
+> - **删除视图**：`DROP VIEW [IF EXISTS] 视图名称 [, 视图名称 ...] [RESTRICT | CASCADE];`，只删除视图定义，不影响基本表的数据；`IF EXISTS` 可避免视图不存在时报错；`RESTRICT` / `CASCADE` 会被解析但被忽略，无实际作用
+>
+> 下方示例只用到了其中最常用的基本形式。
+
 > **命名建议**：视图名以 `v_` 开头，便于和普通表区分。
 
 ```sql
