@@ -2311,7 +2311,6 @@ drop view v_stu_class;
 
 > **说明**：
 >
-> - 其他库中的写法类似，例如 `jing_dong` 库：`create view goods_view as (select goods.id as id, goods.name as name, goods_cates.name as type from goods left outer join goods_cates on goods_cates.id = goods.cate_id);`，思路与上面相同
 > - 简单的视图（单表、不含聚合、分组、`distinct` 等）通常可以通过视图 `insert`/`update`/`delete`，会作用到基本表；复杂视图（连接、聚合等）一般**不可更新**，所以视图主要用于**查询**
 
 ### 19.4 视图的作用
