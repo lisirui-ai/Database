@@ -654,7 +654,7 @@ gender enum('男','女','中性','保密')
 
 > ---
 >
-> **关于外键的说明**：虽然外键约束可以保证数据的有效性，但在进行数据的 CRUD 时，都会**降低数据库的性能**（每次都要检查关联表），所以**实际开发中通常不推荐使用外键**。数据的有效性一般改为**在逻辑层（程序代码）中进行控制**。外键的语法见 [7.4](#74-外键的使用)。
+> **关于外键的说明**：虽然外键约束可以保证数据的有效性，但在进行数据的 CRUD 时，都会**降低数据库的性能**（每次都要检查关联表），所以**实际开发中通常不推荐使用外键**。数据的有效性一般改为**在逻辑层（程序代码）中进行控制**。外键的语法见 [7.3](#73-外键的使用)。
 
 ---
 
@@ -1008,7 +1008,38 @@ $mysql -uroot -p test_db_new < test_db.sql
 > - **R**：Relationship（关系）。关系描述两个实体之间的对应规则，关系的类型包括**一对一、一对多、多对多**
 > - **关系也是一种数据**，需要通过**一个字段**存储在表中
 
-### 7.3 三种关系的实现
+### 7.3 外键的使用
+
+> 外键有两种添加方式：
+>
+> - **建表时定义**：在 `create table` 的列定义之后，作为一个表级约束写入，语法：`constraint 约束名 foreign key (本表列) references 被引用表(被引用列)`（多个约束之间用逗号分隔；被引用表必须已存在）
+> - **建表后追加**：用 `alter table` 为已有的表添加，语法：`alter table 表名 add constraint 约束名 foreign key (本表列) references 被引用表(被引用列);`
+>
+> 两种方式的约束规则相同，下面的说明对两者都适用：
+>
+> - `constraint 约束名` 用于给外键约束命名，便于之后识别和删除（`alter table 表名 drop foreign key 约束名;`）；省略时 MySQL 会自动生成名称
+> - 作用：为表中的指定列添加外键约束，使其取值必须来自被引用表的被引用列，从而保证数据的参照完整性
+> - 本表列与被引用列的数据类型必须一致；被引用列必须是主键或已建立索引；两张表的存储引擎需为 `InnoDB`
+> - 若本表已有数据，则本表列中现有的所有值都必须存在于被引用列中，否则添加外键失败
+
+> 下面以“班级（一）对学生（多）”为例，演示建表后追加：在已有学生表的 `cls_id` 上添加外键，引用班级表的 `id`（假设 `classes`、`students` 表已创建，且 `students` 表有 `cls_id` 列）。
+
+```sql
+-- 给 students 表的 cls_id 字段添加外键约束，引用 classes 表的 id 字段
+-- constraint fk_students_classes：约束名，命名规则为 fk_本表_被引用表
+alter table students
+add constraint fk_students_classes
+foreign key (cls_id) references classes(id);
+-- 插入一个学生：列依次是 name（姓名）、cls_id（班级编号，外键列）
+-- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
+insert into students(name,cls_id) values('张三',1);
+```
+
+> **提醒**：外键会拦截不合法的数据，但也有代价：删除或修改被引用的班级时，如果还有学生引用它，也会失败（需先处理学生）。这是外键“降低性能、增加耦合”的体现，所以实际开发中多由程序逻辑层保证。
+
+### 7.4 三种关系的实现
+
+> 三种关系都是在“存对方主键值的字段”上加外键约束（外键语法见 [7.3 外键的使用](#73-外键的使用)）。以下示例均在建表时用外键定义。
 
 | 关系 | 实现方式 | 示例 |
 | --- | --- | --- |
@@ -1098,30 +1129,6 @@ create table student_course(
 -- 右括号结束列定义，分号结束整条语句
 );
 ```
-
-### 7.4 外键的使用
-
-> 语法：`alter table 表名 add constraint 约束名 foreign key (本表列) references 被引用表(被引用列);`
->
-> - `constraint 约束名` 用于给外键约束命名，便于之后识别和删除（`alter table 表名 drop foreign key 约束名;`）；省略时 MySQL 会自动生成名称
-> - 作用：为表中的指定列添加外键约束，使其取值必须来自被引用表的被引用列，从而保证数据的参照完整性
-> - 本表列与被引用列的数据类型必须一致；被引用列必须是主键或已建立索引；两张表的存储引擎需为 `InnoDB`
-> - 若本表已有数据，则本表列中现有的所有值都必须存在于被引用列中，否则添加外键失败
-
-> 以“班级（一）对学生（多）”为例，在学生表的 `cls_id` 上添加外键，引用班级表的 `id`。
-
-```sql
--- 给 students 表的 cls_id 字段添加外键约束，引用 classes 表的 id 字段
--- constraint fk_students_classes：约束名，命名规则为 fk_本表_被引用表
-alter table students
-add constraint fk_students_classes
-foreign key (cls_id) references classes(id);
--- 插入一个学生：列依次是 name（姓名）、cls_id（班级编号，外键列）
--- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
-insert into students(name,cls_id) values('张三',1);
-```
-
-> **提醒**：外键会拦截不合法的数据，但也有代价：删除或修改被引用的班级时，如果还有学生引用它，也会失败（需先处理学生）。这是外键“降低性能、增加耦合”的体现，所以实际开发中多由程序逻辑层保证。
 
 ---
 
