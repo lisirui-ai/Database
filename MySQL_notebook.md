@@ -1038,9 +1038,9 @@ $mysql -uroot -p test_db_new < test_db.sql
 >
 > 两种方式的约束规则相同，下面的说明对两者都适用：
 >
-> - `constraint 约束名` 用于给外键约束命名，便于之后识别和删除（`alter table 表名 drop foreign key 约束名;`）；省略时 MySQL 会自动生成名称
+> - `constraint 约束名` 用于给外键约束命名，便于之后识别和删除（见下文“删除外键”）；省略时 MySQL 会自动生成名称
 > - 作用：为表中的指定列添加外键约束，使其取值必须来自被引用表的被引用列，从而保证数据的参照完整性
-> - 本表列与被引用列的数据类型必须一致；被引用列必须是主键或已建立索引；两张表的存储引擎需为 `InnoDB`
+> - 本表列与被引用列的数据类型必须相近：整数类型的大小和有无符号必须一致（如都是 `int unsigned`），字符串类型的长度可以不同，但字符集和排序规则必须一致；被引用列必须是主键或已建立索引；两张表的存储引擎需为 `InnoDB`
 > - 若本表已有数据，则本表列中现有的所有值都必须存在于被引用列中，否则添加外键失败
 
 > 下面以“班级（一）对学生（多）”为例，演示建表后追加：在已有学生表的 `cls_id` 上添加外键，引用班级表的 `id`（假设 `classes`、`students` 表已创建，且 `students` 表有 `cls_id` 列）。
@@ -1057,6 +1057,22 @@ insert into students(name,cls_id) values('张三',1);
 ```
 
 > **提醒**：外键会拦截不合法的数据，但也有代价：删除或修改被引用的班级时，如果还有学生引用它，也会失败（需先处理学生）。这是外键“降低性能、增加耦合”的体现，所以实际开发中多由程序逻辑层保证。
+
+> **删除外键**：
+>
+> 语法：`alter table 表名 drop foreign key 外键约束名;`
+>
+> - 删除外键只是**删除约束本身**，**不会删除外键列和表中的任何数据**，原有数据保持不变；删除后，该列的取值不再受被引用表限制
+> - 删除外键需要用**约束名**；若添加时没有命名，需先用 `show create table 表名;` 查看 MySQL 自动生成的约束名
+> - 添加外键时 MySQL 会在外键列没有可用索引时自动创建一个索引，`drop foreign key` 不会删除这个索引，如需删除，另用 `alter table 表名 drop index 索引名;`
+
+```sql
+-- 查看 students 表的建表语句，在输出的 constraint ... foreign key 一行中找到外键约束名
+show create table students;
+-- 删除 students 表上名为 fk_students_classes 的外键约束
+-- 只删除约束，cls_id 列及表中的所有数据都保留，删除后可以插入 classes 中不存在的班级编号
+alter table students drop foreign key fk_students_classes;
+```
 
 ### 7.4 三种关系的实现
 
