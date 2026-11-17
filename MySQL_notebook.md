@@ -1035,7 +1035,11 @@ create table user_detail(
     -- unique 保证同一个用户只能有一条详情，这是“一对一”区别于“一对多”的关键
     user_id int unsigned not null unique,
     -- id_card：身份证号，定长 18 个字符
-    id_card char(18)
+    id_card char(18),
+    -- constraint fk_user_detail_users：外键约束名
+    -- foreign key (user_id) references users(id)：user_id 的值必须在 users.id 中存在
+    -- 外键保证详情一定属于真实存在的用户，unique 保证一对一
+    constraint fk_user_detail_users foreign key (user_id) references users(id)
 -- 右括号结束列定义，分号结束整条语句
 );
 ```
@@ -1059,8 +1063,11 @@ create table students(
     -- name：学生姓名，最长 20 个字符，不允许为空
     name varchar(20) not null,
     -- cls_id：所属班级编号，存放 classes 表的 id；
-    -- 不加 unique，所以多个学生可以填同一个班级编号（外键约束见 7.4）
-    cls_id int unsigned
+    -- 不加 unique，所以多个学生可以填同一个班级编号
+    cls_id int unsigned,
+    -- constraint fk_students_classes：外键约束名
+    -- foreign key (cls_id) references classes(id)：cls_id 的值必须在 classes.id 中存在（或为 null）
+    constraint fk_students_classes foreign key (cls_id) references classes(id)
 -- 右括号结束列定义，分号结束整条语句
 );
 ```
@@ -1068,6 +1075,14 @@ create table students(
 **多对多示例**
 
 ```sql
+-- 多对多示例：先创建课程表（students 表已在上面创建）
+create table courses(
+    -- id：课程编号，无符号整型，自增主键
+    id int unsigned primary key auto_increment,
+    -- name：课程名称，最长 20 个字符，不允许为空
+    name varchar(20) not null
+-- 右括号结束列定义，分号结束整条语句
+);
 -- 多对多示例：学生选课的关系表（中间表），只存两个表的主键值
 create table student_course(
     -- student_id：学生编号，无符号整型，存放 students 表的 id
@@ -1076,7 +1091,10 @@ create table student_course(
     course_id int unsigned,
     -- 联合主键：primary key(列1, 列2)，两列的组合不能重复，
     -- 即同一个学生不能重复选同一门课（但一个学生可以选多门课，一门课可以有多个学生）
-    primary key(student_id, course_id)
+    primary key(student_id, course_id),
+    -- 两个外键：中间表的每个字段分别引用对应主表的主键，保证选课记录中的学生和课程都真实存在
+    constraint fk_student_course_students foreign key (student_id) references students(id),
+    constraint fk_student_course_courses foreign key (course_id) references courses(id)
 -- 右括号结束列定义，分号结束整条语句
 );
 ```
