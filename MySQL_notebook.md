@@ -1083,8 +1083,9 @@ create table student_course(
 
 ### 7.4 外键的使用
 
-> 语法：`alter table 表名 add foreign key (本表列) references 被引用表(被引用列);`
+> 语法：`alter table 表名 add constraint 约束名 foreign key (本表列) references 被引用表(被引用列);`
 >
+> - `constraint 约束名` 用于给外键约束命名，便于之后识别和删除（`alter table 表名 drop foreign key 约束名;`）；省略时 MySQL 会自动生成名称
 > - 作用：为表中的指定列添加外键约束，使其取值必须来自被引用表的被引用列，从而保证数据的参照完整性
 > - 本表列与被引用列的数据类型必须一致；被引用列必须是主键或已建立索引；两张表的存储引擎需为 `InnoDB`
 > - 若本表已有数据，则本表列中现有的所有值都必须存在于被引用列中，否则添加外键失败
@@ -1093,7 +1094,10 @@ create table student_course(
 
 ```sql
 -- 给 students 表的 cls_id 字段添加外键约束，引用 classes 表的 id 字段
-alter table students add foreign key (cls_id) references classes(id);
+-- constraint fk_students_classes：约束名，命名规则为 fk_本表_被引用表
+alter table students
+add constraint fk_students_classes
+foreign key (cls_id) references classes(id);
 -- 插入一个学生：列依次是 name（姓名）、cls_id（班级编号，外键列）
 -- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
 insert into students(name,cls_id) values('张三',1);
