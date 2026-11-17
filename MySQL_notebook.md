@@ -709,12 +709,12 @@ show create table classes;
 >     -- 列定义：列名 + 数据类型（必填）+ 列级约束（可选，可以写多个，顺序任意）
 >     -- not null | null：是否允许为空，默认允许
 >     -- default 默认值：插入时未指定该列则使用默认值
->     -- auto_increment：自动增长（仅用于整数类型的主键或唯一键列）
->     -- unique [key]：唯一约束，列值不能重复
->     -- primary [key]：主键约束，唯一且非空
+>     -- auto_increment：自动增长（该列必须是索引列，通常是主键；一张表最多一个）
+>     -- unique [key]：唯一约束，列值不能重复，key 可省略
+>     -- primary key：主键约束，唯一且非空；列级写法中 key 可单独代表主键，但 primary 不能单独使用
 >     -- comment '说明'：列的注释
->     -- check (条件)：检查约束，MySQL 8.0.16 起才真正生效
->     列名1 数据类型 [not null | null] [default 默认值] [auto_increment] [unique [key]] [primary [key]] [comment '说明'],
+>     -- check (条件)：检查约束，MySQL 8.0.16 起才真正生效，前面可加 constraint [约束名]
+>     列名1 数据类型 [not null | null] [default 默认值] [auto_increment] [unique [key]] [[primary] key] [comment '说明'] [check (条件)],
 >     -- 第二列的定义，写法相同
 >     列名2 数据类型 [约束],
 >     -- 省略号表示还可以继续定义更多列
