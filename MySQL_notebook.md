@@ -1083,13 +1083,16 @@ create table student_course(
 
 ### 7.4 外键的使用
 
+> 语法：`alter table 表名 add foreign key (本表列) references 被引用表(被引用列);`
+>
+> - 作用：给 `students` 表的 `cls_id` 字段添加外键约束，引用 `classes` 表的 `id` 字段
+> - 两个字段的类型必须一致（这里都是 `int unsigned`），被引用的字段必须是主键或有索引，表引擎需要是 `InnoDB`
+> - 如果表中已有数据，已有的 `cls_id` 必须都能在 `classes.id` 中找到，否则添加失败
+
 > 以“班级（一）对学生（多）”为例，在学生表的 `cls_id` 上添加外键，引用班级表的 `id`。
 
 ```sql
--- alter table 表名 add foreign key (本表列) references 被引用表(被引用列);
 -- 给 students 表的 cls_id 字段添加外键约束，引用 classes 表的 id 字段
--- 注意：两个字段的类型必须一致（这里都是 int unsigned），被引用的字段必须是主键或有索引，表引擎需要是 InnoDB
--- 如果表中已有数据，已有的 cls_id 必须都能在 classes.id 中找到，否则添加失败
 alter table students add foreign key (cls_id) references classes(id);
 -- 插入一个学生：列依次是 name（姓名）、cls_id（班级编号，外键列）
 -- cls_id 的值 1 必须在 classes.id 中存在才能插入成功，否则报错（Cannot add or update a child row）
