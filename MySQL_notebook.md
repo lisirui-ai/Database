@@ -2258,34 +2258,54 @@ delete s from students as s inner join classes as c on s.cls_id = c.id where c.n
 ```sql
 -- 1) 定义视图：create view 视图名称 as select 语句;
 -- 例：把“学生姓名 + 班级名称”的连接查询定义为视图 v_stu_class
--- 第一行：创建名为 v_stu_class 的视图，as 后面是定义视图内容的 select 语句
+-- create view：创建视图的关键字；v_stu_class 是视图名（v_ 开头便于和普通表区分）；
+-- as 后面跟定义视图内容的 select 语句；执行后只保存这条 select 的定义，不会复制任何数据
 create view v_stu_class as
--- 第二行：选出学生 id、学生姓名（别名 sname）、班级名称（别名 cname）三列；别名即视图的列名
+-- select 子句：选出 3 列，as 后面的别名就是视图的列名
+-- s.id as id：学生表的主键 id（整数，学生编号），视图中的列名仍为 id
+-- s.name as sname：学生姓名（字符串），起别名 sname，避免与班级名称列 name 重名
+-- c.name as cname：班级名称（字符串），起别名 cname；视图的列名不能重复，所以必须用别名区分两个 name
 select s.id as id, s.name as sname, c.name as cname
--- 第三行：数据来源 students 表，别名 s
+-- from 子句：数据来源（驱动表）是 students 学生表，as s 给它起别名 s，后面可用 s.列名 引用
 from students as s
--- 第四行：左连接 classes 表（别名 c），保留所有学生，连接条件为学生的 cls_id = 班级的 id
+-- left join：左连接，以左表（students）为准，保留所有学生；某个学生没有对应班级时，cname 为 null
+-- classes as c：右表是 classes 班级表，别名 c
+-- on s.cls_id = c.id：连接条件，学生表的外键 cls_id（所属班级编号）等于班级表的主键 id
 left join classes as c on s.cls_id = c.id;
 
 -- 2) 查看视图：show tables 会把所有的视图也一起列出来
+-- 返回一个单列结果集：每行是当前数据库中的一个表名或视图名（列名形如 Tables_in_库名），
+-- 行数 = 基本表数 + 视图数；仅凭该结果无法区分表和视图（需要区分可用 show full tables，多出的 Table_type 列为 BASE TABLE 或 VIEW）
 show tables;
+
 -- 3) 使用视图：视图的用途就是查询，用法和普通表一样
--- 查询视图的所有行和列（相当于重新执行了视图定义里的 select）
+-- select *：查询视图的所有列；from v_stu_class：数据来源是视图而不是基本表
+-- 返回结果集：列为 id、sname、cname，每行对应一个学生；MySQL 会在查询时执行视图定义里的 select，所以结果总是最新的
 select * from v_stu_class;
--- 对视图再加条件过滤：只查班级名称为 python_01期 的学生
+-- where cname = 'python_01期'：对视图的列再加过滤条件，注意这里用的是视图的列名 cname，而不是班级表原来的 c.name
+-- 返回结果集：只包含班级名称为 python_01期 的学生，列仍为 id、sname、cname
 select * from v_stu_class where cname = 'python_01期';
+
 -- 4) 修改视图：create or replace view 可以在视图已存在时直接替换定义
--- 第一行：视图已存在则替换，不存在则创建
+-- or replace：视图已存在则用新定义覆盖，不存在则创建；
+-- 替换需要对该视图拥有 drop 权限；也可以改用 alter view 视图名称 as select 语句; 达到同样效果
 create or replace view v_stu_class as
--- 第二行：新定义比原来多了一列 age（学生年龄）
+-- 新定义比原来多了一列 age（学生年龄，整数），共 4 列：id、sname、age、cname
 select s.id as id, s.name as sname, s.age as age, c.name as cname
--- 第三行：数据来源 students 表，别名 s
+-- 数据来源仍是 students 学生表，别名 s
 from students as s
--- 第四行：与原定义相同，左连接 classes 表
+-- 与原定义相同：左连接 classes 班级表，连接条件为 s.cls_id = c.id
 left join classes as c on s.cls_id = c.id;
+
 -- 5) 查看视图的创建语句：可看到视图的完整定义
+-- 返回结果集只有 1 行，包含 View（视图名）、Create View（完整的建视图语句，
+-- 其中包含系统自动补全的 algorithm、definer、sql security 等信息）、
+-- character_set_client（客户端字符集）、collation_connection（连接排序规则）等列
 show create view v_stu_class;
--- 6) 删除视图：drop view 视图名称;，只删除视图的定义，不影响基本表的数据
+
+-- 6) 删除视图：drop view 视图名称;
+-- 只删除视图的定义，不影响基本表（students、classes）中的数据；
+-- 视图不存在时会报错，可写成 drop view if exists v_stu_class; 避免报错
 drop view v_stu_class;
 ```
 
