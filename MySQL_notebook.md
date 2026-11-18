@@ -2565,6 +2565,8 @@ create table test_index(title varchar(10));
 **② 用 Python 向表中加入十万条数据**
 
 ```python
+# 从标准库 contextlib 中导入 closing：它包装任何带 close() 方法的对象，使其能用于 with 语句
+from contextlib import closing
 # 从第三方库 pymysql 中导入 connect 函数，用于创建数据库连接
 from pymysql import connect
 
@@ -2572,24 +2574,25 @@ from pymysql import connect
 # 定义主函数 main，无参数、无返回值（None）
 def main():
     """向 test_index 表中插入 10 万条数据，用于对比索引前后的查询耗时。"""
-    # 创建 Connection 连接对象（类型 pymysql.connections.Connection），参数含义见 1.5
+    # with 语句：离开代码块（无论是否出错）时自动调用 conn.close()，不用再手写 try/finally
+    # closing(对象)：返回上下文管理器；as conn：把 Connection 连接对象
+    # （类型 pymysql.connections.Connection）赋值给变量 conn
     # host：服务器地址（str）；port：端口（int）；database：库名（str）
     # user / password：账号与密码（str）；charset：字符集（str）
-    conn = connect(host='localhost', port=3306, database='jing_dong',
-                   user='root', password='mysql', charset='utf8')
-    # 获得 Cursor（游标）对象，通过它执行 SQL
-    cursor = conn.cursor()
-    # 循环插入 10 万次数据：range(100000) 产生 0 到 99999 共 10 万个整数，i 为当前序号（int）
-    for i in range(100000):
-        # 每次插入 'ha-0'、'ha-1'、...、'ha-99999'
-        # %d 是整数占位符，% i 用 i 的值替换它；execute 返回受影响的行数（int），这里忽略
-        cursor.execute("insert into test_index values('ha-%d')" % i)
-    # 提交数据：insert 属于修改操作，不 commit 的话插入不会生效
-    conn.commit()
-    # 关闭游标，释放资源
-    cursor.close()
-    # 关闭连接，释放服务器端的连接资源
-    conn.close()
+    with closing(connect(host='localhost', port=3306, database='jing_dong',
+                         user='root', password='mysql',
+                         charset='utf8')) as conn:
+        # 嵌套的 with：游标在离开代码块时自动关闭；as cursor 把 Cursor（游标）对象赋给 cursor
+        with closing(conn.cursor()) as cursor:
+            # 循环插入 10 万次：range(100000) 产生 0 到 99999 共 10 万个整数，i 为当前序号（int）
+            for i in range(100000):
+                # 每次插入 'ha-0'、'ha-1'、...、'ha-99999'
+                # %d 是整数占位符，% i 用 i 的值替换它；execute 返回受影响的行数（int），这里忽略
+                cursor.execute("insert into test_index values('ha-%d')" % i)
+            # 提交数据：insert 属于修改操作，不 commit 的话插入不会生效
+            conn.commit()
+        # 代码缩进回到这里时，游标已被自动关闭
+    # 代码缩进回到这里时，连接也已被自动关闭
 
 
 # 判断当前文件是否被直接运行，是则执行下面的代码
