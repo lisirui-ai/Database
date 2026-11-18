@@ -2587,8 +2587,14 @@ def main():
             # 循环插入 10 万次：range(100000) 产生 0 到 99999 共 10 万个整数，i 为当前序号（int）
             for i in range(100000):
                 # 每次插入 'ha-0'、'ha-1'、...、'ha-99999'
-                # %d 是整数占位符，% i 用 i 的值替换它；execute 返回受影响的行数（int），这里忽略
-                cursor.execute("insert into test_index values('ha-%d')" % i)
+                # 参数化查询：execute 有两个位置参数
+                # 第 1 个：SQL 语句（str），%s 是占位符（不论列是什么类型都用 %s，且不要加引号）
+                # 第 2 个：参数序列（tuple 或 list），按顺序替换 %s，由 pymysql 负责转义和加引号，
+                # 可防止 SQL 注入；只有一个参数时，元组末尾必须有逗号，如 (x,)
+                # f'ha-{i}' 是 f 字符串，先在 Python 中把 i 的值嵌入，拼出 'ha-0' 这样的字符串（str）
+                # execute 返回受影响的行数（int），这里忽略
+                cursor.execute("insert into test_index values(%s)",
+                               (f'ha-{i}',))
             # 提交数据：insert 属于修改操作，不 commit 的话插入不会生效
             conn.commit()
         # 代码缩进回到这里时，游标已被自动关闭
