@@ -2832,16 +2832,16 @@ $mysql -ulaowang -p
 ### 22.4 修改权限、回收权限
 
 ```sql
--- 修改（追加）权限：grant 权限名称 on 数据库 to 账户@主机 [with grant option];
--- 权限名称：要追加的权限，多个用逗号分隔；数据库：授权范围（库名.表名，* 表示全部）
+-- 修改（追加）权限：grant 权限名称 on 数据库.表 to 账户@主机 [with grant option];
+-- 权限名称：要追加的权限，多个用逗号分隔；数据库.表：授权范围，库名.* 表示该库所有表，库名.表名 表示某张表，*.* 表示全部
 -- 追加是在原有权限基础上叠加，不会覆盖已有权限
 -- with grant option 是可选项，表示该账户还可以把自己拥有的权限授予别人（慎用）
-grant 权限名称 on 数据库 to 账户@主机 with grant option;
+grant 权限名称 on 数据库.表 to 账户@主机 with grant option;
 -- 举例：给 laowang 追加 jing_dong 库所有表的 insert（插入）、update（修改）权限
 -- 执行后 laowang 同时拥有 select、insert、update 三种权限
 grant insert,update on jing_dong.* to 'laowang'@'localhost';
--- 回收权限：revoke 权限 on 数据库 from 账户@主机;
--- 注意回收用 from，授权用 to；回收的范围必须与授权时的范围对应
+-- 回收权限：revoke 权限 on 数据库.表 from 账户@主机;
+-- 注意回收用 from，授权用 to；数据库.表 的写法与 grant 相同，且回收的范围必须与授权时的范围对应
 -- 这里回收 laowang 在 jing_dong 库上的 insert、update 权限，回收后只剩 select
 revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 -- 补充：可用 show grants for 账户@主机; 再次查看，确认权限是否已变化
