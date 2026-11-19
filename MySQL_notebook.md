@@ -2788,6 +2788,8 @@ grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 > **数据库.表** 的写法：`jing_dong.*` 表示 `jing_dong` 库的所有表；`*.*` 表示所有库的所有表。
 
 > **示例 1**：创建一个 `laowang` 的账号，密码为 `123456`，**只能通过本地访问**，并且**只能对 `jing_dong` 数据库中的所有表进行读操作**。
+>
+> **示例 2**：创建一个 `laoli` 的账号，密码为 `12345678`，**可以在任意电脑上连接访问**，并且对 `jing_dong` 数据库中的所有表拥有**所有权限**。
 
 ```bash
 # step1：使用 root 登录，回车后输入密码，再回车
@@ -2798,6 +2800,7 @@ $mysql -uroot -p
 
 ```sql
 -- step2：创建账户并授予权限（8.0 必须分两步：先 create user，再 grant）
+-- ===== 示例 1：laowang，只能本机登录，只读 =====
 -- 创建用户 laowang：'laowang' 是用户名；'localhost' 表示只能从本机登录；'123456' 是登录密码
 create user 'laowang'@'localhost' identified by '123456';
 -- 授予权限：select 是只读（查询）权限；jing_dong.* 表示 jing_dong 库的所有表
@@ -2807,25 +2810,21 @@ grant select on jing_dong.* to 'laowang'@'localhost';
 -- 返回结果集：只有一列，每一行是一条 GRANT ... 形式的授权语句，
 -- 其中会有 GRANT USAGE（表示仅有登录权限，无其他全局权限）和对 jing_dong 库的 SELECT 授权
 show grants for laowang@localhost;
--- step3：quit 退出 mysql 客户端（无参数，等价于 exit），回到系统终端
-quit
-```
-
-```bash
-# step4：使用 laowang 账户登录，回车后输入密码（123456）；登录后只能查询 jing_dong 库
-# -ulaowang：-u 指定用户名，与用户名连写；-p：不带值，回车后提示输入密码
-# 必须在本机执行，因为该账户的主机是 localhost；写入类语句会报权限不足（ERROR 1142）
-$mysql -ulaowang -p
-```
-
-> **示例 2**：创建一个 `laoli` 的账号，密码为 `12345678`，**可以在任意电脑上连接访问**，并且对 `jing_dong` 数据库中的所有表拥有**所有权限**。
-
-```sql
+-- ===== 示例 2：laoli，任意主机登录，拥有全部权限 =====
 -- 先创建账户：'laoli' 是用户名；'%' 是通配符，表示允许从任意主机登录；'12345678' 是登录密码
 create user 'laoli'@'%' identified by '12345678';
 -- 再授权：all privileges 表示对该范围的所有权限（不包括 grant option，即不能再转授他人）
 -- jing_dong.* 表示 jing_dong 库的所有表；to 后的账户主机部分 '%' 要与创建时一致
 grant all privileges on jing_dong.* to 'laoli'@'%';
+-- step3：quit 退出 mysql 客户端（无参数，等价于 exit），回到系统终端
+quit
+```
+
+```bash
+# step4：使用 laowang 账户登录验证，回车后输入密码（123456）；登录后只能查询 jing_dong 库
+# -ulaowang：-u 指定用户名，与用户名连写；-p：不带值，回车后提示输入密码
+# 必须在本机执行，因为该账户的主机是 localhost；写入类语句会报权限不足（ERROR 1142）
+$mysql -ulaowang -p
 ```
 
 > **注意**：8.0 中 `grant ... identified by '密码'` 的写法已被移除（会报语法错误），必须先 `create user` 创建账户，再 `grant` 授权。
