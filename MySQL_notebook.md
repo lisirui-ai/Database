@@ -2743,12 +2743,17 @@ show profiles;
 > - `authentication_string`：密码，**加密后的值**
 
 ```sql
--- use 库名：切换到系统库 mysql（保存账户和权限信息）
+-- use 库名：切换当前数据库；参数 mysql 是 MySQL 自带的系统库，保存账户、权限等信息
+-- 无返回结果集，成功时提示 Database changed
 use mysql;
--- desc 表名：查看 user 表的结构（字段名、类型等）
+-- desc 表名：查看表结构；参数 user 是 mysql 库中保存账户信息的表
+-- 返回结果集：每一行对应 user 表的一个字段，列含义为 Field（字段名）、Type（数据类型）、
+-- Null（是否允许为空）、Key（索引/键类型）、Default（默认值）、Extra（附加信息）
 desc user;
--- 查看所有用户：host（允许从哪里登录）、user（用户名）、authentication_string（加密后的密码）
--- 每行对应一个账户，账户由“用户名 + 主机”共同唯一确定
+-- select 列名 from 表名：查询所有账户；返回结果集，每一行对应一个账户
+-- host（字符串）：允许该账户从哪里登录；user（字符串）：用户名
+-- authentication_string（字符串）：加密后的密码，不是明文
+-- 账户由“用户名 + 主机”共同唯一确定，所以同名用户可以有多行（主机不同）
 select host,user,authentication_string from user;
 ```
 
@@ -2762,10 +2767,15 @@ select host,user,authentication_string from user;
 
 ```sql
 -- 创建账户：create user '用户名'@'访问主机' identified by '密码';
--- '用户名'@'访问主机'：账户标识（字符串）；identified by '密码'：设置该账户的登录密码
+-- '用户名'@'访问主机'：账户标识（字符串），用户名和主机共同确定一个账户；主机含特殊字符（如 %）时必须加引号
+-- identified by '密码'：设置该账户的登录密码（字符串，明文书写，MySQL 会加密保存）
+-- 无返回结果集，成功时提示 Query OK；账户已存在则报错
 create user '用户名'@'访问主机' identified by '密码';
 -- 授权：grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
--- 权限列表：如 select、insert 等，多个用逗号分隔；数据库.表：授权范围，* 表示全部
+-- 权限列表：如 select、insert 等，多个用逗号分隔，all privileges 表示全部权限
+-- 数据库.表：授权范围，库名.* 表示该库所有表，*.* 表示所有库的所有表
+-- to '用户名'@'访问主机'：被授权的账户，必须已经存在（8.0 中不会自动创建）
+-- 无返回结果集，成功时提示 Query OK
 grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 ```
 
@@ -2781,34 +2791,40 @@ grant 权限列表 on 数据库.表 to '用户名'@'访问主机';
 
 ```bash
 # step1：使用 root 登录，回车后输入密码，再回车
-# -u root 指定用户名；-p 不带值，表示回车后提示输入密码
+# mysql：命令行客户端；-uroot：-u 指定用户名（字符串），这里是 root，-u 与用户名可连写
+# -p：不带值，表示回车后提示输入密码（输入时不显示）；登录成功后出现 mysql> 提示符
 $mysql -uroot -p
 ```
 
 ```sql
 -- step2：创建账户并授予权限（8.0 必须分两步：先 create user，再 grant）
--- 创建用户 laowang，只能从本机登录（localhost），密码 123456
+-- 创建用户 laowang：'laowang' 是用户名；'localhost' 表示只能从本机登录；'123456' 是登录密码
 create user 'laowang'@'localhost' identified by '123456';
--- 授予 laowang 对 jing_dong 库所有表（jing_dong.*）的 select（查询）权限
+-- 授予权限：select 是只读（查询）权限；jing_dong.* 表示 jing_dong 库的所有表
+-- to 后是被授权的账户 laowang@localhost，主机部分必须与创建时一致
 grant select on jing_dong.* to 'laowang'@'localhost';
--- 查看 laowang 拥有哪些权限（结果为 GRANT ... 形式的授权语句）
+-- show grants for 账户：查看指定账户拥有的权限；账户写法与创建时一致（引号可省略）
+-- 返回结果集：只有一列，每一行是一条 GRANT ... 形式的授权语句，
+-- 其中会有 GRANT USAGE（表示仅有登录权限，无其他全局权限）和对 jing_dong 库的 SELECT 授权
 show grants for laowang@localhost;
--- step3：退出 root 的登录，回到系统终端
+-- step3：quit 退出 mysql 客户端（无参数，等价于 exit），回到系统终端
 quit
 ```
 
 ```bash
-# step4：使用 laowang 账户登录，回车后输入密码；登录后只能查询 jing_dong 库
-# -ulaowang：-u 与用户名连写；-p：提示输入密码
+# step4：使用 laowang 账户登录，回车后输入密码（123456）；登录后只能查询 jing_dong 库
+# -ulaowang：-u 指定用户名，与用户名连写；-p：不带值，回车后提示输入密码
+# 必须在本机执行，因为该账户的主机是 localhost；写入类语句会报权限不足（ERROR 1142）
 $mysql -ulaowang -p
 ```
 
 > **示例 2**：创建一个 `laoli` 的账号，密码为 `12345678`，**可以在任意电脑上连接访问**，并且对 `jing_dong` 数据库中的所有表拥有**所有权限**。
 
 ```sql
--- 先创建账户：'%' 表示允许从任意主机登录，密码为 12345678
+-- 先创建账户：'laoli' 是用户名；'%' 是通配符，表示允许从任意主机登录；'12345678' 是登录密码
 create user 'laoli'@'%' identified by '12345678';
--- 再授权：all privileges 表示所有权限，jing_dong.* 表示 jing_dong 库的所有表
+-- 再授权：all privileges 表示对该范围的所有权限（不包括 grant option，即不能再转授他人）
+-- jing_dong.* 表示 jing_dong 库的所有表；to 后的账户主机部分 '%' 要与创建时一致
 grant all privileges on jing_dong.* to 'laoli'@'%';
 ```
 
@@ -2817,14 +2833,20 @@ grant all privileges on jing_dong.* to 'laoli'@'%';
 ### 22.4 修改权限、回收权限
 
 ```sql
--- 修改（追加）权限：在原有基础上给 账户@主机 追加权限
--- with grant option 是可选项，表示该账户还可以把自己的权限授予别人
+-- 修改（追加）权限：grant 权限名称 on 数据库 to 账户@主机 [with grant option];
+-- 权限名称：要追加的权限，多个用逗号分隔；数据库：授权范围（库名.表名，* 表示全部）
+-- 追加是在原有权限基础上叠加，不会覆盖已有权限
+-- with grant option 是可选项，表示该账户还可以把自己拥有的权限授予别人（慎用）
 grant 权限名称 on 数据库 to 账户@主机 with grant option;
--- 举例：给 laowang 追加 jing_dong 库的 insert（插入）、update（修改）权限
+-- 举例：给 laowang 追加 jing_dong 库所有表的 insert（插入）、update（修改）权限
+-- 执行后 laowang 同时拥有 select、insert、update 三种权限
 grant insert,update on jing_dong.* to 'laowang'@'localhost';
--- 回收权限（补充）：revoke 权限 on 数据库 from 账户@主机；注意回收用 from，授权用 to
--- 这里回收 laowang 在 jing_dong 库上的 insert、update 权限
+-- 回收权限：revoke 权限 on 数据库 from 账户@主机;
+-- 注意回收用 from，授权用 to；回收的范围必须与授权时的范围对应
+-- 这里回收 laowang 在 jing_dong 库上的 insert、update 权限，回收后只剩 select
 revoke insert,update on jing_dong.* from 'laowang'@'localhost';
+-- 补充：可用 show grants for 账户@主机; 再次查看，确认权限是否已变化
+show grants for 'laowang'@'localhost';
 ```
 
 > `grant` / `revoke` 执行后权限通常即时生效；如果是直接修改 `mysql.user` 等系统表，则必须执行 `flush privileges;` 刷新。
@@ -2835,9 +2857,11 @@ revoke insert,update on jing_dong.* from 'laowang'@'localhost';
 
 ```sql
 -- alter user '用户名'@'主机' identified by '新密码'：修改指定账户的密码
--- 这里把 laowang@localhost 的密码改为 luke123
+-- '用户名'@'主机'：要修改的账户（字符串），必须已存在；'新密码'：新的登录密码（字符串，明文书写）
+-- 这里把 laowang@localhost 的密码改为 luke123；无返回结果集，成功时提示 Query OK
 alter user 'laowang'@'localhost' identified by 'luke123';
--- flush privileges：重新加载权限表；alter user 本身即时生效，这里的刷新只是保险写法，可省略
+-- flush privileges：重新加载权限表（无参数，无结果集）
+-- alter user 本身即时生效，这里的刷新只是保险写法，可省略
 flush privileges;
 ```
 
@@ -2850,14 +2874,15 @@ flush privileges;
 > 如果要在一台 Ubuntu 中使用 `mysql` 命令远程连接另外一台 MySQL 服务器：
 
 ```bash
-# vim：文本编辑器，参数是要编辑的配置文件路径
-# 修改 MySQL 服务端的配置文件，把 bind-address 改为 0.0.0.0（或注释掉）
+# vim：文本编辑器，参数是要编辑的配置文件路径（vim 中按 i 进入编辑，Esc 后输入 :wq 保存退出）
+# 修改 MySQL 服务端的配置文件，把 bind-address 改为 0.0.0.0（或注释掉），表示监听所有网卡
 $vim /etc/mysql/mysql.conf.d/mysqld.cnf
 # service 服务名 动作：mysql 是服务名，restart 表示重启，使配置生效
-# 重启 MySQL 服务
+# 重启 MySQL 服务；修改配置文件后必须重启，否则不会生效
 $service mysql restart
-# -h 指定服务器 IP（要替换成真实地址）；-uroot 用户名；-p 提示输入密码
-# 在另外一台机器上用 -h 指定服务器 IP 进行连接测试
+# mysql：命令行客户端；-h 指定服务器 IP 或域名（字符串，要替换成真实地址，不写则默认本机）
+# -uroot：用户名 root（-u 与用户名可连写）；-p：不带值，回车后提示输入密码
+# 在另外一台机器上执行，用于连接测试；能进入 mysql> 提示符说明远程连接成功
 $mysql -h 服务器IP -uroot -p
 ```
 
@@ -2873,18 +2898,22 @@ $mysql -h 服务器IP -uroot -p
 > 如果账号不允许从远程登录，只能在 `localhost`，这时只要在 `localhost` 那台电脑登录 MySQL 后，更改 `mysql` 数据库里 `user` 表的 `host` 项，从 `localhost` 改成 `%`。
 
 ```bash
-# 登录 MySQL：-u 指定用户名，-p 提示输入密码
+# 登录 MySQL：-u 指定用户名（root 为实例级管理员），-p 不带值，回车后提示输入密码
+# 需要在 MySQL 所在的那台机器（localhost）上执行
 $mysql -u root -p
 ```
 
 ```sql
--- use 库名：切换到系统库 mysql
+-- use 库名：切换当前数据库；mysql 是保存账户和权限信息的系统库
 use mysql;
--- update 表 set 列=值 where 条件：把 user 表中 root 账户的 host 改为 %（任意主机）
+-- update 表 set 列=值 where 条件：修改满足条件的行
+-- 把 user 表中 user 列为 root 的账户的 host 列改为 %（任意主机）；where 条件不能省略，否则会改掉所有账户
+-- 返回 Query OK 以及 Rows matched（匹配行数）、Changed（实际修改行数）
 update user set host = '%' where user = 'root';
--- 查看修改结果：host 一列应变为 %
+-- 查看修改结果：返回结果集，每一行是一个账户；root 账户的 host 一列应变为 %
 select host, user from user;
--- 操作结束之后必须刷新权限，因为直接改了系统表，不刷新不会生效
+-- flush privileges：重新加载权限表（无参数，无结果集）
+-- 因为直接改了系统表，MySQL 内存中的权限信息没有更新，不刷新不会生效
 flush privileges;
 ```
 
@@ -2892,12 +2921,15 @@ flush privileges;
 
 ```sql
 -- 语法 1（推荐）：使用 root 登录，drop user '用户名'@'主机';
--- 主机部分必须与账户创建时一致，否则会报错账户不存在；前文创建的是 laowang@'localhost'，所以这里也写 localhost
+-- '用户名'@'主机'：要删除的账户（字符串）；主机部分必须与账户创建时一致，否则会报错账户不存在
+-- 前文创建的是 laowang@'localhost'，所以这里也写 localhost；该账户的权限会一并删除，无返回结果集
 drop user 'laowang'@'localhost';
--- 语法 2：直接删除 mysql 数据库的 user 表中的数据（语法 1 失败时才采用）
--- delete from 表 where 条件：删除 user 列为 laowang 的行
+-- 语法 2：直接删除 mysql 数据库的 user 表中的数据（语法 1 失败时才采用，需先 use mysql;）
+-- delete from 表 where 条件：删除满足条件的行；这里删除 user 列为 laowang 的行（不区分主机）
+-- 返回 Query OK 及受影响的行数；where 不能省略，否则会删除所有账户
 delete from user where user='laowang';
--- 操作结束之后必须刷新权限，直接改系统表后不刷新不会生效
+-- flush privileges：重新加载权限表（无参数，无结果集）
+-- 直接改系统表后，内存中的权限信息没有更新，不刷新则已删除账户可能仍然可用
 flush privileges;
 ```
 
@@ -2905,14 +2937,60 @@ flush privileges;
 
 ### 22.8 忘记 root 密码怎么办
 
-> `root` 账户通常由 DBA 管理，这里只给出思路（如需处理，可参考 [忘记 root 密码的处理方法](http://blog.csdn.net/lxpbs8851/article/details/10895085)）：
+> `root` 账户通常由 DBA 管理。处理思路是：**临时跳过权限验证启动 MySQL，重设密码，再正常重启**。以下以 Ubuntu 为例。
+
+**第 1 步：停止服务，并以跳过权限验证的方式启动**
+
+```bash
+# service 服务名 动作：mysql 是服务名，stop 表示停止服务（必须先停止，否则无法再启动第二个 mysqld 进程）
+$sudo service mysql stop
+# mkdir -p 目录：创建目录；-p 表示父目录不存在时一并创建，目录已存在也不报错
+# /var/run/mysqld 是 mysqld 存放 socket 和 pid 文件的目录，服务停止后该目录可能不存在
+$sudo mkdir -p /var/run/mysqld
+# chown 用户:用户组 目录：修改目录的所有者；mysql:mysql 表示所有者和所属组都是 mysql，保证 mysqld 有权限写入
+$sudo chown mysql:mysql /var/run/mysqld
+# mysqld_safe：MySQL 的启动脚本，会启动 mysqld 并在其异常退出时自动重启
+# --skip-grant-tables：不加载权限表，所有连接都不需要密码验证，且拥有全部权限
+# &：让命令在后台运行，当前终端仍可继续输入命令；8.0.22 及以后启用该选项时，MySQL 会自动只允许本机连接
+$sudo mysqld_safe --skip-grant-tables &
+```
+
+**第 2 步：免密码登录并重设密码**
+
+```bash
+# mysql：命令行客户端；-u root：以 root 身份登录；不带 -p，因为已跳过权限验证，不需要密码
+$sudo mysql -u root
+```
+
+```sql
+-- flush privileges：重新加载权限表（无参数，无结果集）
+-- 必须先执行：跳过权限验证时账户管理语句不可用，不先刷新直接 alter user 会报错
+-- ERROR 1290 ... running with the --skip-grant-tables option
+flush privileges;
+-- alter user '用户名'@'主机' identified by '新密码'：重设指定账户的密码
+-- 'root'@'localhost'：从本机登录的 root 账户（字符串）；'新密码'：新的登录密码（字符串），请替换成自己的密码
+-- 无返回结果集，成功时提示 Query OK
+alter user 'root'@'localhost' identified by '新密码';
+-- quit：退出 mysql 客户端（无参数，等价于 exit），回到系统终端
+quit
+```
+
+**第 3 步：关闭临时实例，正常启动服务**
+
+```bash
+# mysqladmin：MySQL 自带的管理工具；-u root：用户名；-p：不带值，回车后输入刚设置的新密码
+# shutdown：子命令，关闭当前正在运行的 mysqld（即跳过权限验证的那个临时实例）
+$sudo mysqladmin -u root -p shutdown
+# 以正常方式启动服务（此时会加载权限表，登录需要密码）
+$sudo service mysql start
+# 使用新密码登录验证：-u root 用户名；-p 回车后输入新密码；能进入 mysql> 提示符说明重设成功
+$mysql -u root -p
+```
+
+> **注意**：
 >
-> 1. 停止 MySQL 服务
-> 2. 以**跳过权限验证**的方式启动 MySQL（`mysqld_safe --skip-grant-tables &`），此时不输入密码即可登录
-> 3. 登录后先 `flush privileges;`，再用 `alter user 'root'@'localhost' identified by '新密码';` 重设密码
-> 4. 正常重启 MySQL 服务，用新密码登录
->
-> **注意**：跳过权限验证期间任何人都可以连接数据库，操作要尽快完成，并确保网络安全。
+> - 跳过权限验证期间，**任何能连上的人都拥有全部权限**。8.0.22 之前该选项不会限制远程连接，所以操作要尽快完成，并确保网络安全
+> - 如果不先 `flush privileges;`，直接执行 `alter user` 会报错；8.0 也不能再用 `update mysql.user` 的方式改密码（见 22.5）
 
 ---
 
@@ -2975,12 +3053,13 @@ flush privileges;
 **在主服务器 Ubuntu 上备份：**
 
 ```bash
-# mysqldump：MySQL 自带的备份工具，把数据库导出为 SQL 文件
-# -u：用户名；-p：后面直接写密码（这里是 mysql，-p 与密码之间不能有空格）
-# --all-databases：导出所有数据库
-# --lock-all-tables：执行备份时锁住所有表，防止备份过程中有数据被修改，保证数据一致
-# >：输出重定向，把导出的内容保存到后面的文件
-# ~/master_db.sql：保存位置，~ 表示当前用户的家目录（位置可自己指定）
+# mysqldump：MySQL 自带的备份工具，把数据库导出为 SQL 文件（建库、建表语句 + insert 语句）
+# -uroot：-u 指定用户名（字符串），这里是 root；-pmysql：-p 后直接写密码（这里密码是 mysql，-p 与密码之间不能有空格）
+# --all-databases：长选项，导出所有数据库（含 mysql 系统库）；只备份某个库时改为 库名
+# --lock-all-tables：执行备份时对所有库的所有表加全局读锁，防止备份过程中数据被修改，保证备份一致；备份期间只能读不能写
+# >：输出重定向，把导出的内容保存到后面的文件，而不是打印到屏幕
+# ~/master_db.sql：保存位置，~ 表示当前用户的家目录（文件名和位置可自己指定）
+# 无屏幕输出表示成功；命令行写密码会留在历史记录中，仅学习使用
 $mysqldump -uroot -pmysql --all-databases --lock-all-tables > ~/master_db.sql
 ```
 
@@ -2991,9 +3070,10 @@ $mysqldump -uroot -pmysql --all-databases --lock-all-tables > ~/master_db.sql
 > 3. 在命令窗口中执行还原操作：
 
 ```bash
-# 在 Windows 命令窗口中执行：mysql 是命令行客户端
+# 在 Windows 命令窗口中执行（需先进入 mysql 命令所在的 bin 目录）：mysql 是命令行客户端
 # -uroot：用户名 root；-pmysql：密码 mysql（-p 与密码之间不能有空格）
-# <：输入重定向，表示从 master_db.sql 文件读入内容并执行，从而还原所有库
+# <：输入重定向，把 master_db.sql 的内容作为输入交给 mysql 逐条执行，从而还原所有库和表
+# 文件路径相对于当前目录；无屏幕输出表示成功，执行出错会打印 ERROR 及原因
 $mysql -uroot -pmysql < master_db.sql
 ```
 
@@ -3004,26 +3084,28 @@ $mysql -uroot -pmysql < master_db.sql
 **① 编辑配置文件，设置 `log_bin` 和 `server-id`**
 
 ```bash
-# vim 文件路径：用 vim 编辑器打开配置文件；sudo 提供修改该文件所需的管理员权限
+# sudo：以管理员权限执行（修改该文件需要）
+# vim 文件路径：用 vim 编辑器打开配置文件（按 i 进入编辑，Esc 后输入 :wq 保存退出）
 # 编辑 MySQL 服务端配置文件
 $sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
 ```
 
 ```
-# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端
+# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端（mysqld 进程）
 [mysqld]
-# 服务器的唯一 ID，主服务器设为 1（整数，主从各不相同）
+# server-id：服务器的唯一 ID（整数，范围 1~4294967295），主服务器设为 1；主从之间不能重复，否则同步失败
 server-id = 1
-# 开启二进制日志，并指定日志文件的位置和前缀
+# log_bin：开启二进制日志，值是日志文件的存放路径和文件名前缀（字符串）
+# 实际生成的文件会带序号，如 mysql-bin.000001，同时生成索引文件 mysql-bin.index
 log_bin = /var/log/mysql/mysql-bin.log
 # 以下为可选项：
-# 二进制日志过期天数（8.0 中已过时，改用 binlog_expire_logs_seconds）
+# expire_logs_days：二进制日志保留天数（整数），超过天数自动删除（8.0 中已过时，改用 binlog_expire_logs_seconds，单位为秒）
 expire_logs_days = 10
-# 单个二进制日志文件的最大大小
+# max_binlog_size：单个二进制日志文件的最大大小（带单位的数值），超过后自动切换到下一个文件
 max_binlog_size = 100M
-# 只记录哪个数据库的二进制日志（要同步多个数据库时，重复写多行即可）
+# binlog_do_db：只记录哪个数据库的二进制日志（字符串，库名）；要同步多个数据库时，重复写多行即可
 binlog_do_db = test
-# 忽略哪个数据库的二进制日志
+# binlog_ignore_db：忽略（不记录）哪个数据库的二进制日志（字符串，库名）；这里忽略系统库 mysql
 binlog_ignore_db = mysql
 ```
 
@@ -3032,26 +3114,29 @@ binlog_ignore_db = mysql
 **② 重启 MySQL 服务**
 
 ```bash
-# service 服务名 动作：mysql 是服务名，restart 表示重启
-# 修改配置后必须重启才能生效
+# sudo：以管理员权限执行；service 服务名 动作：mysql 是服务名，restart 表示先停止再启动
+# 修改配置文件后必须重启才能生效；成功时无输出，可用 service mysql status 确认为 active (running)
 $sudo service mysql restart
 ```
 
 **③ 登录主服务器的 MySQL，创建用于同步数据的账号**
 
 ```bash
-# 登录主服务器的 MySQL：-uroot 用户名 root；-pmysql 密码 mysql（-p 与密码之间不能有空格）
+# 登录主服务器的 MySQL：mysql 是命令行客户端
+# -uroot：用户名 root；-pmysql：密码 mysql（-p 与密码之间不能有空格）
 $mysql -uroot -pmysql
 ```
 
 ```sql
--- 创建复制专用账号 slave，密码 123；@'%' 表示允许从任意主机（也就是从服务器）登录
--- 8.0 默认的 caching_sha2_password 认证方式要求复制连接使用 SSL 或 RSA 公钥，学习环境可改用 mysql_native_password
+-- 创建复制专用账号：'slave' 是用户名；@'%' 表示允许从任意主机（也就是从服务器）登录
+-- identified with mysql_native_password：指定认证插件为 mysql_native_password
+-- 因为 8.0 默认的 caching_sha2_password 要求复制连接使用 SSL 或 RSA 公钥，学习环境改用旧插件更简单
+-- by '123'：账号密码为 123（字符串）；无返回结果集，成功提示 Query OK
 create user 'slave'@'%' identified with mysql_native_password by '123';
--- 授予“复制从库”权限：复制需要的是 replication slave 权限
+-- 授予“复制从库”权限：复制真正需要的是 replication slave 权限（允许读取主库的二进制日志）
 -- *.* 表示所有库的所有表（该权限是全局权限，只能这样写）
 grant replication slave on *.* to 'slave'@'%';
--- flush privileges：重新加载权限表，使授权立即生效
+-- flush privileges：重新加载权限表（无参数，无结果集），使授权立即生效
 flush privileges;
 ```
 
@@ -3060,8 +3145,13 @@ flush privileges;
 **④ 获取主服务器的二进制日志信息**
 
 ```sql
--- show master status：查看主服务器当前使用的二进制日志文件和位置
--- 结果含 File（日志文件名）、Position（当前位置，整数）等列；8.0.22+ 也可用 show binary log status;
+-- show master status：查看主服务器当前使用的二进制日志文件和位置（无参数）
+-- 返回结果集，只有一行，列含义：
+--   File（字符串）：当前正在写入的二进制日志文件名
+--   Position（整数）：当前写入位置（字节偏移量），从库将从这个位置开始复制
+--   Binlog_Do_DB / Binlog_Ignore_DB：配置文件中指定的记录 / 忽略的库
+--   Executed_Gtid_Set：已执行的全局事务标识集合（未启用 GTID 时为空）
+-- 8.2.0 起 show master status 已被弃用，新写法是 show binary log status;（8.0 中仍用 show master status）
 show master status;
 ```
 
@@ -3077,9 +3167,9 @@ show master status;
 **① 找到 Windows 中 MySQL 的配置文件 `my.ini`，将 `server-id` 修改为 2，保存退出**
 
 ```
-# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端
+# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端（mysqld 进程）；若文件中已有该段，直接在段内添加
 [mysqld]
-# 从服务器的唯一 ID（整数），必须与主服务器不同（主服务器是 1）
+# server-id：从服务器的唯一 ID（整数），必须与主服务器不同（主服务器是 1）；多个从服务器之间也不能重复
 server-id = 2
 ```
 
@@ -3092,8 +3182,9 @@ server-id = 2
 **③ 进入 Windows 的 MySQL，设置连接到主服务器**
 
 ```sql
--- change master to：告诉从服务器要从哪个主服务器、哪个日志文件的哪个位置开始同步
--- 各项之间用逗号分隔，最后一项以分号结束
+-- change master to：告诉从服务器要连接哪个主服务器、从哪个日志文件的哪个位置开始同步
+-- 各项之间用逗号分隔，最后一项以分号结束；无返回结果集，成功提示 Query OK
+-- 配置前如果从服务器正在同步，需要先执行 stop slave; 停止同步线程
 change master to
     -- master_host：主服务器 Ubuntu 的 IP 地址（字符串，按实际环境替换）
     master_host = '10.211.55.5',
@@ -3107,15 +3198,21 @@ change master to
     master_log_pos = 590;
 ```
 
-> **8.0.23 以后的新写法**：`CHANGE MASTER TO` 改为 `CHANGE REPLICATION SOURCE TO`，参数名也相应改为 `SOURCE_HOST`、`SOURCE_USER`、`SOURCE_PASSWORD`、`SOURCE_LOG_FILE`、`SOURCE_LOG_POS`；`START SLAVE` 改为 `START REPLICA`；`SHOW SLAVE STATUS` 改为 `SHOW REPLICA STATUS`。旧写法在 8.0 中仍可用，但已过时。
+> **新写法**：从 8.0.22 起，`START SLAVE` 改为 `START REPLICA`，`SHOW SLAVE STATUS` 改为 `SHOW REPLICA STATUS`；从 8.0.23 起，`CHANGE MASTER TO` 改为 `CHANGE REPLICATION SOURCE TO`，参数名也相应改为 `SOURCE_HOST`、`SOURCE_USER`、`SOURCE_PASSWORD`、`SOURCE_LOG_FILE`、`SOURCE_LOG_POS`。旧写法在 8.0 中仍可用，但已过时。
 
 **④ 开启同步，查看同步状态**
 
 ```sql
--- start slave：开启主从同步线程（IO 线程和 SQL 线程），关闭同步用 stop slave;
+-- start slave：开启主从同步线程（IO 线程和 SQL 线程，无参数，无结果集），关闭同步用 stop slave;
+-- IO 线程负责从主库拉取 binlog 写入中继日志，SQL 线程负责执行中继日志中的语句
 start slave;
--- show slave status：查看同步状态；\G 代替分号，让结果竖着显示（每个字段一行），更易阅读
--- 注意 \G 后面不要再加分号
+-- show slave status：查看从服务器的同步状态（无参数）
+-- \G 代替分号，让结果竖着显示（每个字段一行），更易阅读；注意 \G 后面不要再加分号
+-- 返回结果集：只有一行，常用字段含义：
+--   Master_Host / Master_Log_File / Read_Master_Log_Pos：连接的主库地址、正在读取的日志文件和位置
+--   Slave_IO_Running（Yes/No）：IO 线程是否正常；Slave_SQL_Running（Yes/No）：SQL 线程是否正常
+--   Seconds_Behind_Master（整数，秒）：从库落后主库的时间，0 表示基本同步，NULL 表示同步线程未运行
+--   Last_IO_Error / Last_SQL_Error（字符串）：最近一次错误信息，为空表示没有错误
 show slave status\G
 ```
 
@@ -3130,12 +3227,14 @@ show slave status\G
 
 ```sql
 -- 在 Ubuntu 的 MySQL（主服务器）中创建一个数据库：写操作会记入 binlog 并同步给从服务器
--- charset=utf8 指定字符集
+-- create database 库名：创建数据库，参数 test_sync 是库名（字符串）；charset=utf8 指定字符集
+-- 无返回结果集，成功提示 Query OK, 1 row affected
 create database test_sync charset=utf8;
 ```
 
 ```sql
--- 在 Windows 的 MySQL（从服务器）中查看所有数据库
+-- 在 Windows 的 MySQL（从服务器）中查看所有数据库（无参数）
+-- 返回结果集：只有一列 Database，每一行是一个数据库名
 -- 如果结果中能看到 test_sync，说明主从同步成功
 show databases;
 ```
