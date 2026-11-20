@@ -3389,24 +3389,29 @@ show databases;
 >
 > ---
 
-| 位置 | 配置项 | 含义 |
-|---|---|---|
-| 主服务器 | `binlog_do_db` | 只把指定数据库的写操作记入二进制日志，可重复写多行 |
-| 主服务器 | `binlog_ignore_db` | 不记录指定数据库的写操作，可重复写多行 |
-| 从服务器 | `replicate_do_db` | 只执行指定数据库的日志，可重复写多行 |
-| 从服务器 | `replicate_ignore_db` | 忽略指定数据库的日志，可重复写多行 |
-| 从服务器 | `replicate_do_table` | 只同步指定的表，格式为 `库名.表名`，可重复写多行 |
-| 从服务器 | `replicate_ignore_table` | 忽略指定的表，格式为 `库名.表名` |
-| 从服务器 | `replicate_wild_do_table` | 用通配符指定要同步的表，`%` 匹配任意多个字符，`_` 匹配单个字符 |
-| 从服务器 | `replicate_wild_ignore_table` | 用通配符指定要忽略的表 |
+| 配置所在的服务器 | 配置文件与配置段 | 配置项 | 含义 |
+|---|---|---|---|
+| 主服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `binlog_do_db` | 只把指定数据库的写操作记入二进制日志，可重复写多行 |
+| 主服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `binlog_ignore_db` | 不记录指定数据库的写操作，可重复写多行 |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_do_db` | 只执行指定数据库的日志，可重复写多行 |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_ignore_db` | 忽略指定数据库的日志，可重复写多行 |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_do_table` | 只同步指定的表，格式为 `库名.表名`，可重复写多行 |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_ignore_table` | 忽略指定的表，格式为 `库名.表名` |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_wild_do_table` | 用通配符指定要同步的表，`%` 匹配任意多个字符，`_` 匹配单个字符 |
+| 从服务器 | `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段 | `replicate_wild_ignore_table` | 用通配符指定要忽略的表 |
 
 > ---
+>
+> 以上配置项都写在**各自服务器**的 MySQL 配置文件中（本例为 Ubuntu 下的 `/etc/mysql/mysql.conf.d/mysqld.cnf`，写在 `[mysqld]` 段内），修改后需要**重启 MySQL 服务**才能生效。`binlog_*` 只能写在**主服务器**上，`replicate_*` 只能写在**从服务器**上。
 >
 > **两种过滤方式的区别：**
 >
 > - **在主服务器过滤**（`binlog_do_db`）：不需要同步的内容根本不会写入 binlog，节省网络和磁盘；但这些变更在 binlog 中也就没有了，**不能再用 binlog 恢复**这部分数据
 > - **在从服务器过滤**（`replicate_*`）：主库的 binlog 仍然完整，由每个从服务器自己决定执行哪些内容，更灵活，**推荐优先使用**
-> - 按**库**过滤时，判断依据通常是语句执行时**当前所在的数据库**（`use 库名` 选中的库），跨库写的语句可能被误过滤；按**表**过滤（`replicate_do_table`、`replicate_wild_do_table`）更精确可靠
+> - 按**库**过滤（`binlog_do_db`、`replicate_do_db` 等）时，如果二进制日志格式是 `statement`（记录原始 SQL 语句），判断依据是执行语句时**当前所在的数据库**（`use 库名` 选中的库），**而不是语句里实际操作的表所在的库**，所以**跨库写的语句可能被误过滤**；按**表**过滤（`replicate_do_table`、`replicate_wild_do_table`）不受这个影响，更精确可靠
+>   - 例：配置了 `binlog_do_db = db_b`，在没有 `use db_b` 的情况下，执行 `use db_a; insert into db_b.t values (1);`。当前库是 `db_a`，不在记录名单里，这条语句**不会写入 binlog**，`db_b.t` 的这次修改就**不会同步**到从库
+>   - 反过来，配置了 `binlog_do_db = db_a` 时，上面这条语句会因为当前库是 `db_a` 而被**记录并同步**，即使它修改的其实是 `db_b` 的表
+>   - 判断自己用的是哪种格式：执行 `show variables like 'binlog_format';`，值为 `STATEMENT`（语句）、`ROW`（行）或 `MIXED`（混合）；MySQL 8.0 默认是 `ROW`，按行记录时库过滤是按**被修改的表所在的库**判断的，这个问题基本不存在；但建表、改表等 DDL 语句无论哪种格式都按语句记录，仍然按当前库判断
 > - 开始同步前，从服务器上必须**已经有**这些需要同步的库和表（用 `mysqldump` 只备份它们并还原）
 
 **在从服务器的配置文件中只同步指定的表：**
