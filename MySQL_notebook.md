@@ -3438,20 +3438,6 @@ replicate_wild_do_table = jing_dong.goods%
 $sudo service mysql restart
 ```
 
-> 8.0 也可以不改配置文件、不重启，直接在从服务器的 MySQL 中用语句修改过滤规则（需要先停止 SQL 线程，改完再开启）：
-
-```sql
--- stop slave sql_thread：只停止 SQL 线程（无参数，无结果集），IO 线程继续拉取日志
-stop slave sql_thread;
--- change replication filter：修改复制过滤规则（无结果集，成功提示 Query OK）
--- replicate_do_table = (表1, 表2)：括号内是用逗号分隔的 库名.表名 列表，执行后会替换原有的同类规则
-change replication filter replicate_do_table = (test.students, test.classes);
--- start slave sql_thread：重新开启 SQL 线程，新的过滤规则开始生效
-start slave sql_thread;
--- 查看当前生效的过滤规则：返回结果集，Replicate_Do_DB、Replicate_Do_Table 等列显示各类过滤规则的内容
-show slave status\G
-```
-
 ---
 
 ## 二十四、速查
