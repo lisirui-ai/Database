@@ -3239,8 +3239,6 @@ show databases;
 ```
 
 > **后续**：此后在主服务器上的所有写操作（建库、建表、增删改）都会自动同步到从服务器。**注意**：不要直接在从服务器上写数据，否则会造成主从数据不一致（可以把从库设置为只读：`set global read_only=1;`）。
->
-> 补充资料：[主从同步配置教程](https://blog.csdn.net/wd2014610/article/details/79715974)；MySQL 8.0 配置账户密码方式不同，参考 [8.0 配置密码](https://blog.csdn.net/qq_23859799/article/details/85862821)。
 
 ---
 
