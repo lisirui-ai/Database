@@ -3179,27 +3179,27 @@ server-id = 2
 
 > 在开始菜单中输入 `services.msc`，打开 Windows 服务管理，找到 `MySQL80`（服务名与安装的版本有关），**重启**该服务。
 
-**②-补充：检查主、从服务器的 `server_uuid` 是否不同**
-
+> **补充：检查主、从服务器的 `server_uuid` 是否不同**
+>
 > `server_uuid` 是 MySQL 首次启动时自动生成的实例唯一标识，保存在数据目录的 `auto.cnf` 中。主从双方必须不同，否则从库 IO 线程会报错 `master and slave have equal MySQL server UUIDs`。本例中两台服务器是各自独立安装、用 `mysqldump` 还原数据的，UUID 本来就不同；如果是克隆虚拟机或复制数据目录搭建的从库，就必须检查。
-
-```sql
--- show variables like：按名称查看系统变量，'server_uuid' 是要查看的变量名（字符串）
--- 返回结果集：一行两列，Variable_name（变量名）和 Value（36 位 UUID 字符串）
--- 在主服务器和从服务器上各执行一次，对比两个 Value 是否不同
-show variables like 'server_uuid';
-```
-
-```bash
-# 如果两边 UUID 相同，在【从服务器】（Ubuntu 示例）上按下面三步处理
-# 第 1 步：停止 MySQL 服务，避免文件被占用；service 服务名 动作，stop 表示停止
-$sudo service mysql stop
-# 第 2 步：rm 删除文件；删除 auto.cnf 后，MySQL 下次启动会自动生成新的 UUID
-# /var/lib/mysql 是 Ubuntu 上默认的数据目录（Windows 在 C:\ProgramData\MySQL\MySQL Server 8.0\Data\）
-$sudo rm /var/lib/mysql/auto.cnf
-# 第 3 步：重新启动服务，此时会生成新的 auto.cnf 和新的 server_uuid
-$sudo service mysql start
-```
+>
+> ```sql
+> -- show variables like：按名称查看系统变量，'server_uuid' 是要查看的变量名（字符串）
+> -- 返回结果集：一行两列，Variable_name（变量名）和 Value（36 位 UUID 字符串）
+> -- 在主服务器和从服务器上各执行一次，对比两个 Value 是否不同
+> show variables like 'server_uuid';
+> ```
+>
+> ```bash
+> # 如果两边 UUID 相同，在【从服务器】（Ubuntu 示例）上按下面三步处理
+> # 第 1 步：停止 MySQL 服务，避免文件被占用；service 服务名 动作，stop 表示停止
+> $sudo service mysql stop
+> # 第 2 步：rm 删除文件；删除 auto.cnf 后，MySQL 下次启动会自动生成新的 UUID
+> # /var/lib/mysql 是 Ubuntu 上默认的数据目录（Windows 在 C:\ProgramData\MySQL\MySQL Server 8.0\Data\）
+> $sudo rm /var/lib/mysql/auto.cnf
+> # 第 3 步：重新启动服务，此时会生成新的 auto.cnf 和新的 server_uuid
+> $sudo service mysql start
+> ```
 
 **③ 进入 Windows 的 MySQL，设置连接到主服务器**
 
