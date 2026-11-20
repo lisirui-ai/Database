@@ -28,7 +28,7 @@ MySQL 是目前 Web 开发中使用最广泛的**关系型数据库管理系统�
 | 五   | 数据库与数据表操作（DDL）：库的创建/删除、表的创建/修改/删除、查看表结构 |
 | 六   | 数据增删改（DML）：insert、update、delete、逻辑删除、备份与恢复 |
 | 七   | 数据库设计：三范式、E-R 模型、三种对应关系与外键 |
-| 八 | 基础查询：查询列、别名、去重、基础查询的进阶用法 |
+| 八 | 基础查询：查询列、别名、去重、基础查询的进阶用法、跨库查询 |
 | 九 | 条件查询：比较运算符、逻辑运算符、模糊查询、范围查询、空判断、优先级 |
 | 十 | 排序：order by、asc/desc、多列排序 |
 | 十一 | 聚合函数：count、max、min、sum、avg |
@@ -1221,7 +1221,7 @@ create table student_course(
 
 > 本章起的查询示例（自关联一章另用 `areas` 表除外）统一使用学生表 `students`（列：`id`、`name`、`age`、`height`、`gender`、`cls_id`、`is_delete`）和班级表 `classes`（列：`id`、`name`），其中 `cls_id` 对应 `classes.id`，`is_delete` 为逻辑删除标记（0 未删除，1 已删除）。示例只演示写法，不涉及具体数据。
 >
-> 8.4、8.5 是 `select` 的**进阶用法**：把查询结果写入另一张表（`insert ... select`）或用查询结果建表（`create table ... select`）。这两节的示例改用商品表 `goods` 及其拆分出的分类表、品牌表。
+> 8.4、8.5 是 `select` 的**进阶用法**：把查询结果写入另一张表（`insert ... select`）或用查询结果建表（`create table ... select`）。这两节的示例改用商品表 `goods` 及其拆分出的分类表、品牌表。8.6 介绍不切换数据库的**跨库查询**写法 `库名.表名`。
 
 ### 8.1 查询所有字段与指定字段
 
@@ -1327,6 +1327,44 @@ create table goods_brands(
 -- 省略列定义：新表的列名和类型由 select 的结果推断，不带主键、自增等约束
 create table goods_brands2
 select distinct brand_name as name from goods;
+```
+
+### 8.6 跨库查询
+
+> 前面的示例都是先用 `use 库名;` 选中当前数据库，再直接写表名。其实**不用 `use` 切换数据库**，只要在表名前加上**数据库名**，写成 **`库名.表名`**，就可以查询**任意数据库**中的表，这就是**跨库查询**。
+>
+> 语法：`select 列 from 库名.表名;`
+>
+> - 没有选中任何数据库（没有执行过 `use`）时，直接写 `from 表名` 会报错 `ERROR 1046 (3D000): No database selected`；写成 `库名.表名` 则不需要选中数据库
+> - 已经 `use` 了某个库时，不带库名的表名默认属于**当前库**；带了库名的表，属于**指定的库**，所以可以在同一条语句中同时查询**多个库**的表
+> - 列名也可以写成 `库名.表名.列名`，用来区分不同库中同名的表或列；库名、表名都可以像 8.2 一样起别名简化
+> - 当前账号必须对被查询的库、表有 `select` 权限（见第二十二章），否则会报权限不足
+> - `库名.表名` 的写法不只用于 `select`，`insert`、`update`、`delete`、`create table`（如 `create table 库名.表名`）等语句同样适用
+
+```sql
+-- 不执行 use，直接查询 test_db 库中的 students 表
+-- 库名.表名：test_db 是数据库名（字符串），students 是该库中的表名；结果集与先 use test_db 再查询相同
+select * from test_db.students;
+
+-- 列名前也可以带库名和表名：库名.表名.列名，三级之间用英文句点连接
+select test_db.students.id, test_db.students.name from test_db.students;
+
+-- 给“库名.表名”起别名 s，之后用 s.列名引用，写起来更简短
+select s.id, s.name from test_db.students as s;
+
+-- 同时查询两个不同数据库中的表：test_db.students 和 jing_dong.goods
+-- 这里用 cross join 把两张表的行两两组合（笛卡尔积），仅演示库名的写法，实际使用时应该用 on 条件连接（见 15.1 连接查询）
+-- 返回结果集：每行包含一个学生姓名 s.name 和一个商品名称 g.name，行数 = students 行数 × goods 行数
+select s.name, g.name from test_db.students as s cross join jing_dong.goods as g;
+
+-- 跨库连接查询的正确用法：用 on 指定两表的对应关系，两张表分别来自不同的数据库
+-- 返回结果集：学生姓名 student_name 和班级名称 class_name 两列；这里假设班级表 classes 在 jing_dong 库中，仅演示写法
+select s.name as student_name, c.name as class_name
+from test_db.students as s
+inner join jing_dong.classes as c on s.cls_id = c.id;
+
+-- 用 select database() 可以查看当前选中的数据库（没有 use 过时返回 NULL），跨库查询不会改变它
+select database();
 ```
 
 ---
