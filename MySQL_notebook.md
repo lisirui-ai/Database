@@ -3340,7 +3340,48 @@ create database test_sync charset=utf8;
 show databases;
 ```
 
-> **后续**：此后在主服务器上的所有写操作（建库、建表、增删改）都会自动同步到从服务器。**注意**：不要直接在从服务器上写数据，否则会造成主从数据不一致（可以把从库设置为只读：`set global read_only=1;`）。
+> **后续**：此后在主服务器上的所有写操作（建库、建表、增删改）都会自动同步到从服务器。**注意**：不要直接在从服务器上写数据，否则会造成主从数据不一致（可以把从库设置为只读，设置方法见下文）。
+
+> **设置从服务器为只读（在从服务器上操作）：**
+>
+> - **临时设置**：在从服务器的 MySQL 中执行 SQL 语句，立即生效，但 MySQL **重启后失效**
+> - **永久设置**：写进从服务器的配置文件 `/etc/mysql/mysql.conf.d/mysqld.cnf` 的 `[mysqld]` 段，**重启服务后生效**
+> - 只在**从服务器**设置，主服务器必须保持可写
+> - 只读模式**不影响**复制的 SQL 线程，主库的变更仍然会正常同步到从库
+> - `read_only` 限制不了拥有 `super` 权限的账号（如 `root`），要连它们也限制，需要再开启 `super_read_only`
+>
+> ```sql
+> -- 临时设置：在从服务器的 MySQL 中执行
+> -- set global：修改全局系统变量，对所有新连接生效；read_only 的值 1 表示只读，0 表示可读写
+> -- 无返回结果集，成功提示 Query OK；MySQL 重启后失效，恢复成配置文件中的值（默认 0）
+> set global read_only = 1;
+> -- super_read_only：值 1 表示连拥有 super 权限的账号也不能写，限制更严格（开启它会同时开启 read_only）
+> set global super_read_only = 1;
+> -- 查看是否生效：show variables like 变量名; 返回结果集，两列 Variable_name（变量名）和 Value（值）
+> -- Value 为 ON 表示已开启只读，OFF 表示未开启
+> show variables like '%read_only%';
+> ```
+>
+> ```bash
+> # 永久设置：在从服务器上编辑配置文件
+> # sudo：以管理员权限执行；vim 文件路径：用 vim 编辑器打开配置文件（按 i 进入编辑，Esc 后输入 :wq 保存退出）
+> $sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
+> ```
+>
+> ```
+> # [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端（mysqld 进程）；若文件中已有该段，直接在段内添加
+> [mysqld]
+> # read_only：开启只读模式（值 1 表示开启，0 表示关闭）；普通账号不能写，拥有 super 权限的账号仍然可以写
+> read_only = 1
+> # super_read_only：值 1 表示连拥有 super 权限的账号也不能写，限制更严格
+> super_read_only = 1
+> ```
+>
+> ```bash
+> # 修改配置文件后，必须重启服务才能生效
+> # sudo：以管理员权限执行；service 服务名 动作：mysql 是服务名，restart 表示先停止再启动
+> $sudo service mysql restart
+> ```
 
 #### 23.4.5 只同步部分数据库或表（可选）
 
