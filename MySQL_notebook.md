@@ -3157,7 +3157,6 @@ grant replication slave on *.* to 'slave'@'%';
 flush privileges;
 ```
 
-> **说明**：常见的旧写法是先创建 `'slave'@'localhost'` 账号、授予 `select` 权限，再 `update user set host='%'` 使其能远程登录。但**复制账号真正需要的权限是 `REPLICATION SLAVE`**，仅有 `select` 权限无法完成复制，且直接创建 `@'%'` 账号比修改 `host` 更规范，所以采用上面的写法。
 
 **④ 获取主服务器的二进制日志信息**
 
