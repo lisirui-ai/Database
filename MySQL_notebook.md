@@ -3044,7 +3044,7 @@ $mysql -u root -p
 
 ### 23.4 详细配置主从同步
 
-> 主和从的身份可以自己指定。这里将**虚拟机 Ubuntu 中的 MySQL 作为主服务器**，将 **Windows 中的 MySQL 作为从服务器**。在主从设置前，要保证 Ubuntu 与 Windows 间的**网络连通**。
+> 主和从的身份可以自己指定。这里使用**两台 Ubuntu 虚拟机**：将**其中一台 Ubuntu 中的 MySQL 作为主服务器**，将**另一台 Ubuntu 中的 MySQL 作为从服务器**。在主从设置前，要保证两台 Ubuntu 之间的**网络连通**（可以用 `ping 对方IP` 测试）。
 
 #### 23.4.1 备份主服务器原有数据到从服务器
 
@@ -3063,14 +3063,20 @@ $mysql -u root -p
 $mysqldump -uroot -pmysql --all-databases --lock-all-tables > ~/master_db.sql
 ```
 
-**在从服务器 Windows 上还原：**
+**在从服务器 Ubuntu 上还原：**
 
-> 1. 找到 Windows 上 `mysql` 命令所在的位置（在 MySQL 安装目录的 `bin` 目录下），在该目录打开命令窗口
-> 2. 将从主服务器 Ubuntu 中导出的文件**复制**到从服务器 Windows 中，可以放在上面 `mysql` 命令所在的文件夹中，方便还原
-> 3. 在命令窗口中执行还原操作：
+> 1. 将主服务器上导出的 `master_db.sql` **复制**到从服务器 Ubuntu 中（例如放在家目录下），可以用 `scp` 命令传输
+> 2. 在从服务器的终端中执行还原操作：
 
 ```bash
-# 在 Windows 命令窗口中执行（需先进入 mysql 命令所在的 bin 目录）：mysql 是命令行客户端
+# scp：基于 SSH 的远程复制命令，格式：scp 源文件 用户名@目标IP:目标目录
+# 在【主服务器】上执行：把 ~/master_db.sql 复制到从服务器（IP 按实际环境替换，ubuntu 为从服务器的登录用户名）
+# ~：表示目标用户的家目录；首次连接会提示确认指纹，输入 yes，再输入从服务器登录用户的密码
+$scp ~/master_db.sql ubuntu@10.211.55.6:~
+```
+
+```bash
+# 在【从服务器】的终端中执行（master_db.sql 在当前目录下）：mysql 是命令行客户端
 # -uroot：用户名 root；-pmysql：密码 mysql（-p 与密码之间不能有空格）
 # <：输入重定向，把 master_db.sql 的内容作为输入交给 mysql 逐条执行，从而还原所有库和表
 # 文件路径相对于当前目录；无屏幕输出表示成功，执行出错会打印 ERROR 及原因
@@ -3162,9 +3168,15 @@ show master status;
 >
 > 这两个参数**必须记下**，配置从服务器时会用到。
 
-#### 23.4.3 配置从服务器 slave（Windows 中的 MySQL）
+#### 23.4.3 配置从服务器 slave（另一台 Ubuntu 中的 MySQL）
 
-**① 找到 Windows 中 MySQL 的配置文件 `my.ini`，将 `server-id` 修改为 2，保存退出**
+**① 编辑从服务器的 MySQL 配置文件，将 `server-id` 修改为 2，保存退出**
+
+```bash
+# sudo：以管理员权限执行；vim 文件路径：用 vim 编辑器打开配置文件（按 i 进入编辑，Esc 后输入 :wq 保存退出）
+# 与主服务器相同，Ubuntu 下的 MySQL 服务端配置文件是 /etc/mysql/mysql.conf.d/mysqld.cnf
+$sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
+```
 
 ```
 # [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端（mysqld 进程）；若文件中已有该段，直接在段内添加
@@ -3177,11 +3189,15 @@ server-id = 2
 
 **② 重启 MySQL 服务**
 
-> 在开始菜单中输入 `services.msc`，打开 Windows 服务管理，找到 `MySQL80`（服务名与安装的版本有关），**重启**该服务。
+```bash
+# sudo：以管理员权限执行；service 服务名 动作：mysql 是服务名，restart 表示先停止再启动
+# 修改配置文件后必须重启才能生效；成功时无输出，可用 service mysql status 确认为 active (running)
+$sudo service mysql restart
+```
 
 > **补充：检查主、从服务器的 `server_uuid` 是否不同**
 >
-> `server_uuid` 是 MySQL 首次启动时自动生成的实例唯一标识，保存在数据目录的 `auto.cnf` 中。主从双方必须不同，否则从库 IO 线程会报错 `master and slave have equal MySQL server UUIDs`。本例中两台服务器是各自独立安装、用 `mysqldump` 还原数据的，UUID 本来就不同；如果是克隆虚拟机或复制数据目录搭建的从库，就必须检查。
+> `server_uuid` 是 MySQL 首次启动时自动生成的实例唯一标识，保存在数据目录的 `auto.cnf` 中。主从双方必须不同，否则从库 IO 线程会报错 `master and slave have equal MySQL server UUIDs`。如果两台 Ubuntu 虚拟机是各自独立安装 MySQL 的，UUID 本来就不同；但如果**从服务器是克隆主服务器的虚拟机**得到的（两台虚拟机很容易这样搭建），或是复制了数据目录，UUID 就会相同，必须检查。
 >
 > ```sql
 > -- show variables like：按名称查看系统变量，'server_uuid' 是要查看的变量名（字符串）
@@ -3191,17 +3207,17 @@ server-id = 2
 > ```
 >
 > ```bash
-> # 如果两边 UUID 相同，在【从服务器】（Ubuntu 示例）上按下面三步处理
+> # 如果两边 UUID 相同，在【从服务器】上按下面三步处理
 > # 第 1 步：停止 MySQL 服务，避免文件被占用；service 服务名 动作，stop 表示停止
 > $sudo service mysql stop
 > # 第 2 步：rm 删除文件；删除 auto.cnf 后，MySQL 下次启动会自动生成新的 UUID
-> # /var/lib/mysql 是 Ubuntu 上默认的数据目录（Windows 在 C:\ProgramData\MySQL\MySQL Server 8.0\Data\）
+> # /var/lib/mysql 是 Ubuntu 上默认的数据目录，auto.cnf 就保存在这里
 > $sudo rm /var/lib/mysql/auto.cnf
 > # 第 3 步：重新启动服务，此时会生成新的 auto.cnf 和新的 server_uuid
 > $sudo service mysql start
 > ```
 
-**③ 进入 Windows 的 MySQL，设置连接到主服务器**
+**③ 进入从服务器 Ubuntu 的 MySQL，设置连接到主服务器**
 
 ```sql
 -- change master to：告诉从服务器要连接哪个主服务器、从哪个日志文件的哪个位置开始同步
@@ -3248,14 +3264,14 @@ show slave status\G
 #### 23.4.4 测试主从同步
 
 ```sql
--- 在 Ubuntu 的 MySQL（主服务器）中创建一个数据库：写操作会记入 binlog 并同步给从服务器
+-- 在主服务器 Ubuntu 的 MySQL 中创建一个数据库：写操作会记入 binlog 并同步给从服务器
 -- create database 库名：创建数据库，参数 test_sync 是库名（字符串）；charset=utf8 指定字符集
 -- 无返回结果集，成功提示 Query OK, 1 row affected
 create database test_sync charset=utf8;
 ```
 
 ```sql
--- 在 Windows 的 MySQL（从服务器）中查看所有数据库（无参数）
+-- 在从服务器 Ubuntu 的 MySQL 中查看所有数据库（无参数）
 -- 返回结果集：只有一列 Database，每一行是一个数据库名
 -- 如果结果中能看到 test_sync，说明主从同步成功
 show databases;
