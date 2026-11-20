@@ -3158,8 +3158,11 @@ log_bin = /var/log/mysql/mysql-bin.log
 expire_logs_days = 10
 # max_binlog_size：单个二进制日志文件的最大大小（带单位的数值），超过后自动切换到下一个文件
 max_binlog_size = 100M
-# binlog_do_db：只记录哪个数据库的二进制日志（字符串，库名）；要同步多个数据库时，重复写多行即可
+# binlog_do_db：只记录哪个数据库的二进制日志（字符串，库名）；每行指定一个库，要同步多个数据库就重复写多行
+# 下面三行表示只记录 test、test_db、jing_dong 这三个数据库的变更，其他库的写操作不会记入 binlog，也就不会同步
 binlog_do_db = test
+binlog_do_db = test_db
+binlog_do_db = jing_dong
 # binlog_ignore_db：忽略（不记录）哪个数据库的二进制日志（字符串，库名）；这里忽略系统库 mysql
 binlog_ignore_db = mysql
 ```
