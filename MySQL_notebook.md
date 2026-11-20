@@ -3151,7 +3151,9 @@ $mysql -uroot -pmysql
 -- by '123'：账号密码为 123（字符串）；无返回结果集，成功提示 Query OK
 create user 'slave'@'%' identified with mysql_native_password by '123';
 -- 授予“复制从库”权限：复制真正需要的是 replication slave 权限（允许读取主库的二进制日志）
--- *.* 表示所有库的所有表（该权限是全局权限，只能这样写）
+-- *.* 表示所有库的所有表：replication slave 是全局权限，只能写 *.*，写成 库名.* 或 库名.表名 会报错 ERROR 1221（Incorrect usage of DB GRANT and GLOBAL PRIVILEGES）
+-- 它只决定“这个账号能不能连主库读取 binlog”，不决定同步哪些库表；
+-- 只同步部分库或表，要靠 binlog_do_db / binlog_ignore_db（主库配置文件）或 replicate_do_db / replicate_do_table（从库配置文件）来限定
 grant replication slave on *.* to 'slave'@'%';
 -- flush privileges：重新加载权限表（无参数，无结果集），使授权立即生效
 flush privileges;
@@ -3288,6 +3290,68 @@ show databases;
 ```
 
 > **后续**：此后在主服务器上的所有写操作（建库、建表、增删改）都会自动同步到从服务器。**注意**：不要直接在从服务器上写数据，否则会造成主从数据不一致（可以把从库设置为只读：`set global read_only=1;`）。
+
+#### 23.4.5 只同步部分数据库或表（可选）
+
+> 默认情况下，主服务器上**所有库**的写操作都会同步到从服务器。如果只想同步**部分数据库，甚至部分表**，需要配置**过滤规则**。注意：复制账号的 `grant replication slave on *.*` 只能写 `*.*`，它**不负责**限定同步范围，同步范围由下面的配置项决定。
+>
+> ---
+
+| 位置 | 配置项 | 含义 |
+|---|---|---|
+| 主服务器 | `binlog_do_db` | 只把指定数据库的写操作记入二进制日志，可重复写多行 |
+| 主服务器 | `binlog_ignore_db` | 不记录指定数据库的写操作，可重复写多行 |
+| 从服务器 | `replicate_do_db` | 只执行指定数据库的日志，可重复写多行 |
+| 从服务器 | `replicate_ignore_db` | 忽略指定数据库的日志，可重复写多行 |
+| 从服务器 | `replicate_do_table` | 只同步指定的表，格式为 `库名.表名`，可重复写多行 |
+| 从服务器 | `replicate_ignore_table` | 忽略指定的表，格式为 `库名.表名` |
+| 从服务器 | `replicate_wild_do_table` | 用通配符指定要同步的表，`%` 匹配任意多个字符，`_` 匹配单个字符 |
+| 从服务器 | `replicate_wild_ignore_table` | 用通配符指定要忽略的表 |
+
+> ---
+>
+> **两种过滤方式的区别：**
+>
+> - **在主服务器过滤**（`binlog_do_db`）：不需要同步的内容根本不会写入 binlog，节省网络和磁盘；但这些变更在 binlog 中也就没有了，**不能再用 binlog 恢复**这部分数据
+> - **在从服务器过滤**（`replicate_*`）：主库的 binlog 仍然完整，由每个从服务器自己决定执行哪些内容，更灵活，**推荐优先使用**
+> - 按**库**过滤时，判断依据通常是语句执行时**当前所在的数据库**（`use 库名` 选中的库），跨库写的语句可能被误过滤；按**表**过滤（`replicate_do_table`、`replicate_wild_do_table`）更精确可靠
+> - 开始同步前，从服务器上必须**已经有**这些需要同步的库和表（用 `mysqldump` 只备份它们并还原）
+
+**在从服务器的配置文件中只同步指定的表：**
+
+```
+# [mysqld]：配置段名称，下面的配置项属于 MySQL 服务器端（mysqld 进程）
+[mysqld]
+# server-id：从服务器的唯一 ID（整数），前面已经配置过，保持不变
+server-id = 2
+# replicate_do_table：只同步指定的表（字符串，格式为 库名.表名）；要同步多张表，重复写多行即可
+# 这里只同步 test 库的 students 表和 classes 表，其余的库、表即使主库有变更也不会在从库执行
+replicate_do_table = test.students
+replicate_do_table = test.classes
+# replicate_wild_do_table：用通配符同步一批表（% 匹配任意多个字符）
+# 这里表示同步 jing_dong 库中所有表名以 goods 开头的表
+replicate_wild_do_table = jing_dong.goods%
+```
+
+```bash
+# 修改从服务器配置文件后，必须重启服务才能生效
+# sudo：以管理员权限执行；service 服务名 动作：mysql 是服务名，restart 表示先停止再启动
+$sudo service mysql restart
+```
+
+> 8.0 也可以不改配置文件、不重启，直接在从服务器的 MySQL 中用语句修改过滤规则（需要先停止 SQL 线程，改完再开启）：
+
+```sql
+-- stop slave sql_thread：只停止 SQL 线程（无参数，无结果集），IO 线程继续拉取日志
+stop slave sql_thread;
+-- change replication filter：修改复制过滤规则（无结果集，成功提示 Query OK）
+-- replicate_do_table = (表1, 表2)：括号内是用逗号分隔的 库名.表名 列表，执行后会替换原有的同类规则
+change replication filter replicate_do_table = (test.students, test.classes);
+-- start slave sql_thread：重新开启 SQL 线程，新的过滤规则开始生效
+start slave sql_thread;
+-- 查看当前生效的过滤规则：返回结果集，Replicate_Do_DB、Replicate_Do_Table 等列显示各类过滤规则的内容
+show slave status\G
+```
 
 ---
 
